@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-supabase-auth"
-version = "0.1.0"
+version = "0.2.1"
 authors = ["Emmanuel De Freitas"]
 description = "Supabase authentication plugin for Tauri v2 desktop apps"
 edition = "2021"
