@@ -142,3 +142,48 @@ export function makeAuthError(
 ): AuthError {
   return { kind, message };
 }
+
+/* ------------------------------------------------------------------ */
+/* Onboarding fixtures (feature 002)                                   */
+/* ------------------------------------------------------------------ */
+
+/** A `testUser` clone carrying the given `user_metadata`. */
+export function testUserWithMetadata(meta: Record<string, unknown>): User {
+  return { ...testUser, userMetadata: { ...meta } };
+}
+
+/** A `testSession` clone carrying the given user. */
+export function sessionForUser(user: User): Session {
+  return { ...testSession, user };
+}
+
+/** Makes `signUp` resolve with a pendingConfirmation result (no session). */
+export function mockSignUpPendingConfirmation(): void {
+  signUp.mockResolvedValue({ status: "pendingConfirmation", session: null });
+}
+
+/** Makes `signInWithPassword` reject with `emailNotConfirmed`. */
+export function mockSignInEmailNotConfirmed(): void {
+  signInWithPassword.mockRejectedValue(makeAuthError("emailNotConfirmed"));
+}
+
+/**
+ * Makes `updateUser` merge `data` into a tracked user's metadata and echo
+ * the updated user (GoTrue merge semantics). Returns a handle to inspect
+ * the current user.
+ */
+export function mockUpdateUserEcho(base: User = testUser): {
+  current: () => User;
+} {
+  let current: User = { ...base, userMetadata: { ...base.userMetadata } };
+  updateUser.mockImplementation(async (opts) => {
+    const data =
+      (opts as { data?: Record<string, unknown> } | undefined)?.data ?? {};
+    current = {
+      ...current,
+      userMetadata: { ...current.userMetadata, ...data },
+    };
+    return current;
+  });
+  return { current: () => current };
+}

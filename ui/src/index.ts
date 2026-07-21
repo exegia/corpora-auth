@@ -4,10 +4,13 @@ export * from "./blocks";
 // Hooks
 export * from "./hooks/use-auth";
 export * from "./hooks/use-session";
+export * from "./hooks/use-onboarding";
+export * from "./hooks/use-onboarding-flow";
 
 // Lib
 export * from "./lib/error-messages";
 export * from "./lib/schemas";
+export * from "./lib/onboarding";
 export { cn } from "./lib/utils";
 
 // Components (coss primitives)

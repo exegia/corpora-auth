@@ -8,6 +8,7 @@ any network call, and is keyboard- and screen-reader-operable.
 ```ts
 import { SignInForm, SignUpForm, ForgotPasswordForm,
          UpdatePasswordForm, OtpForm, SocialButtons,
+         OnboardingFlow, useOnboarding,
          useSession, useAuth } from "@exegia/auth-ui";
 import "@exegia/auth-ui/styles.css";
 ```
@@ -50,11 +51,77 @@ One button per provider; disables all and shows a cancel affordance while
 the browser round-trip is in flight. Props: `providers: Provider[]`,
 `onSuccess?(session)`, `errorMessages?`.
 
+### `<OnboardingFlow />`
+
+Multi-step sign-up onboarding: credentials → (email-confirmation waiting
+state, when the project requires it) → your declared profile steps → a
+single completion signal with a signed-in, profiled user.
+
+```tsx
+<OnboardingFlow
+  steps={[
+    { id: "profile", title: "Your profile", fields: [
+      { kind: "text", name: "display_name", label: "Display name", required: true },
+    ]},
+    { id: "preferences", title: "Preferences", fields: [
+      { kind: "select", name: "role", label: "Role", required: true,
+        options: [{ value: "engineer", label: "Engineer" }] },
+      { kind: "checkbox", name: "newsletter", label: "Newsletter" },
+    ]},
+  ]}
+  onComplete={({ user, profile }) => navigateHome()}
+/>
+```
+
+Props: `steps?: OnboardingStepConfig[]` (default `DEFAULT_STEPS`: one
+required display-name step), `onComplete?({ user, profile })` — **fires
+exactly once**, only after the final status write succeeds,
+`onSignInInstead?()` (escape hatch when the email is already registered),
+`passwordPolicy?`, `errorMessages?`, `showCompleteScreen?` (default true).
+
+**Step config**: each step is `{ id, title, description?, fields }`; each
+field is `{ kind: "text" | "textarea" | "select" | "checkbox" | "url",
+name, label, required?, options? (select), placeholder?, validate? }`.
+Validation schemas are generated from the config (a custom `validate` zod
+schema composes on top); values land on `user_metadata` under `name`.
+`name` must not be the reserved `corpora_onboarding` status key.
+
+**Persistence & resume**: every step submit is one atomic
+`updateUser` call carrying the field values plus the versioned status
+record at `user_metadata.corpora_onboarding`, so progress travels with the
+account. Mounting the flow for a signed-in user resumes at the first
+incomplete step; a completed user gets `onComplete` immediately and never
+re-runs the flow. Undecodable status metadata safely degrades to
+"incomplete at the first step".
+
+**Prerequisite — `supabase-auth:allow-update-user`**: profile writes use
+`updateUser`, which is outside the default permission set. Grant it in your
+capabilities or the flow surfaces a configuration error naming the
+permission:
+
+```json
+{ "permissions": ["supabase-auth:default", "supabase-auth:allow-update-user"] }
+```
+
+**Confirmation emails**: the waiting state accepts the 6-digit code from
+the "Confirm signup" email (`verifyOtp(type: "email")`), so your template
+must include `{{ .Token }}` for in-app code entry (the default templates
+only include the link). Confirmation via the emailed link also works — the
+flow silently retries sign-in every 5 s (credentials kept in memory only)
+and advances once the address is confirmed.
+
 ## Hooks
 
 - `useSession()` → `{ session, user, status: "loading" | "signedIn" | "signedOut" }`
   — event-driven (no polling).
 - `useAuth()` → stable actions returning `{ ok: true, data } | { ok: false, error }`.
+- `useOnboarding(steps?)` → `{ status: "loading" | "signedOut" | "incomplete"
+  | "complete", nextStep? }` — gate your app shell on it: `"incomplete"` ⇒
+  render `<OnboardingFlow />`; `"complete"` ⇒ never show it again. The pure
+  `getOnboardingStatus(user, steps?)` helper is exported for non-React use.
+- `useOnboardingFlow(config)` → the headless onboarding state machine
+  behind `<OnboardingFlow />` (state, progress, values, and never-throwing
+  actions) for fully custom shells.
 
 ## Customizing
 
