@@ -1,180 +1,254 @@
-# tauri-plugin-supabase-auth
+<div align="center">
 
-Supabase authentication for Tauri v2 desktop apps (macOS, Windows, Linux):
-email/password, magic link / one-time codes, third-party OAuth through the
-system browser (PKCE + loopback callback), password recovery, and persistent
-auto-refreshing sessions — exposed to **both** your Rust backend and your
-frontend, with a ready-made React UI kit in [`ui/`](./ui).
+# 🔐 tauri-plugin-supabase-auth
 
-Repository layout:
+**Complete Supabase authentication for Tauri v2 desktop apps** — plus a ready-made React auth UI kit.
 
-| Path | What it is |
+[![CI](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#-license)
+[![Tauri v2](https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri&logoColor=white)](https://v2.tauri.app)
+[![Supabase](https://img.shields.io/badge/Supabase-Auth-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/docs/guides/auth)
+
+Email/password &nbsp;·&nbsp; Magic links & one-time codes &nbsp;·&nbsp; OAuth via system browser (PKCE) &nbsp;·&nbsp; Password recovery &nbsp;·&nbsp; Persistent auto-refreshing sessions &nbsp;·&nbsp; OS-keychain storage
+
+</div>
+
+---
+
+## Why this plugin?
+
+Desktop auth is fiddly: token storage that isn't a plain-text JSON file, OAuth redirects without a web server, sessions that survive restarts, refreshes that never race a sign-out. This plugin does all of it **once**, and exposes the result to **both sides of your app**:
+
+| | |
 |---|---|
-| `/` (crate root) | The Rust plugin `tauri-plugin-supabase-auth` |
-| `guest-js/` | TypeScript bindings, published as `@exegia/plugin-supabase-auth` |
-| `ui/` | Auth UI kit (coss ui components + blocks), `@exegia/auth-ui` — see [ui/README.md](./ui/README.md) |
-| `examples/tauri-app/` | Runnable example wiring plugin + UI kit — see [examples/tauri-app/README.md](./examples/tauri-app/README.md) |
+| 🦀 **Rust side** | `app.supabase_auth().sign_in_with_password(..)`, full sessions, state-change callbacks |
+| 🌐 **Frontend side** | `@exegia/plugin-supabase-auth` typed bindings + push events (no polling) |
+| 🎨 **UI kit** | `@exegia/auth-ui` — coss ui blocks: sign-in, sign-up, OTP, recovery, social buttons |
+| 🔑 **Secure by default** | Sessions in the OS keychain; the webview **never sees the refresh token** |
+| 🛡️ **Permission model** | Safe default command set; account mutations are explicit opt-ins |
+| 🧪 **Tested** | 40 Rust contract tests, 44 UI tests (incl. accessibility), live-stack E2E in CI |
 
-## Install
+## 🚀 Quickstart
+
+### 1. Install the plugin (Rust)
 
 ```toml
 # src-tauri/Cargo.toml
 [dependencies]
-tauri-plugin-supabase-auth = "0.1"
+tauri-plugin-supabase-auth = { git = "https://github.com/exegia/corpora-auth" }
 ```
 
 ```rust
 // src-tauri/src/lib.rs
 tauri::Builder::default()
     .plugin(tauri_plugin_supabase_auth::init())
+    // ...
+```
+
+### 2. Install the bindings (frontend)
+
+The npm package lives on GitHub Packages, so point the `@exegia` scope there:
+
+```ini
+# .npmrc (project root)
+@exegia:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}   # any token with read:packages
 ```
 
 ```bash
 pnpm add @exegia/plugin-supabase-auth
+pnpm add @exegia/auth-ui        # optional: the UI kit
 ```
 
-## Configure (`tauri.conf.json`)
+### 3. Configure your Supabase project
 
-```json
+```jsonc
+// src-tauri/tauri.conf.json
 {
   "plugins": {
     "supabase-auth": {
       "url": "https://<project>.supabase.co",
-      "publishableKey": "<publishable-or-anon-key>",
-      "sessionPersistence": "keychain",
-      "autoRefresh": true,
-      "refreshBufferSecs": 60,
-      "oauth": { "callbackPorts": [43823, 43824, 43825], "flowTimeoutSecs": 300 }
+      "publishableKey": "<publishable-or-anon-key>"   // NEVER the service-role key
     }
   }
 }
 ```
 
-| Field | Default | Notes |
+That's the minimum. Everything else has sensible defaults:
+
+| Option | Default | What it does |
 |---|---|---|
-| `url` (required) | — | Your Supabase project URL. Plain `http` allowed only for localhost stacks. |
-| `publishableKey` (required) | — | Publishable/anon key **only** — never the service-role key. |
-| `sessionPersistence` | `"keychain"` | `"keychain"` (OS credential store), `"file"` (app data dir, `0600`), or `"none"`. |
-| `autoRefresh` | `true` | Background refresh before expiry. |
-| `refreshBufferSecs` | `60` | How long before expiry to refresh. |
-| `oauth.callbackPorts` | `[43823, 43824, 43825]` | Loopback ports tried for the OAuth redirect. Add `http://127.0.0.1:<port>/callback` to your provider's redirect allow-list. |
-| `oauth.flowTimeoutSecs` | `300` | Abandoned browser round-trips fail after this. |
+| `sessionPersistence` | `"keychain"` | `"keychain"` (OS credential store) · `"file"` (app data dir, `0600`) · `"none"` |
+| `autoRefresh` | `true` | Refresh sessions in the background before they expire |
+| `refreshBufferSecs` | `60` | How early to refresh |
+| `oauth.callbackPorts` | `[43823, 43824, 43825]` | Loopback ports for the OAuth redirect |
+| `oauth.flowTimeoutSecs` | `300` | Abandoned browser round-trips fail after this |
 
-Configuration is validated at startup: missing or malformed values abort app
-launch with a message naming the field — not a broken first sign-in.
+> ⚡ Config is validated **at startup** — a typo aborts launch with a message naming the exact field, instead of a mysterious failure at first sign-in.
 
-## Permissions
+### 4. Grant permissions
 
-Enable in `src-tauri/capabilities/default.json`:
-
-```json
-{ "permissions": ["supabase-auth:default"] }
-```
-
-`supabase-auth:default` covers the session lifecycle (sign-up, sign-in via
-password/OTP/OAuth, sign-out, session/user queries, manual refresh). Two
-commands are **excluded by default** and need explicit opt-in:
-
-```json
+```jsonc
+// src-tauri/capabilities/default.json
 {
   "permissions": [
-    "supabase-auth:default",
-    "supabase-auth:allow-reset-password-for-email",
-    "supabase-auth:allow-update-user"
+    "core:default",
+    "supabase-auth:default"
   ]
 }
 ```
 
-Every command also has `supabase-auth:allow-*` / `deny-*` permissions for
-fine-grained control.
+`supabase-auth:default` covers the everyday lifecycle (sign-up, sign-in via password/OTP/OAuth, sign-out, session queries, refresh). Two commands are deliberately **excluded** and must be opted into:
 
-## Frontend API (`@exegia/plugin-supabase-auth`)
+```jsonc
+"supabase-auth:allow-reset-password-for-email",
+"supabase-auth:allow-update-user"
+```
+
+### 5. Sign someone in
+
+**Fastest path — drop in a block:**
+
+```tsx
+import { SignInForm, useSession } from "@exegia/auth-ui";
+import "@exegia/auth-ui/styles.css";
+
+export default function App() {
+  const { status, user } = useSession();
+
+  if (status === "loading")  return <p>Restoring session…</p>;
+  if (status === "signedIn") return <p>Hello {user?.email} 👋</p>;
+
+  return (
+    <SignInForm
+      showSocial={["github", "google"]}
+      onForgotPassword={() => {/* route to <ForgotPasswordForm /> */}}
+    />
+  );
+}
+```
+
+**Or call the bindings directly:**
 
 ```ts
 import {
-  signUp, signInWithPassword, signInWithOtp, verifyOtp, signInWithOAuth,
-  cancelOAuthFlow, signOut, getSession, getUser, refreshSession,
-  resetPasswordForEmail, updateUser, onAuthStateChange, isAuthError,
+  signUp, signInWithPassword, signOut, getSession,
+  onAuthStateChange, isAuthError,
 } from "@exegia/plugin-supabase-auth";
 
-// Email/password
-await signUp({ email, password });                    // -> { status, session? }
-const session = await signInWithPassword({ email, password });
+await signUp({ email, password });                 // → { status: "signedIn" | "pendingConfirmation", session? }
+await signInWithPassword({ email, password });     // → Session (never contains the refresh token)
 
-// Magic link / OTP (exactly one of email or phone)
-await signInWithOtp({ email });
-const s2 = await verifyOtp({ email, token: "123456", type: "email" });
-
-// OAuth via the system browser; resolves when the round-trip completes
-const s3 = await signInWithOAuth({ provider: "github" });
-
-// State (on demand + push)
-const current = await getSession();                   // Session | null (no refresh token)
 const unlisten = await onAuthStateChange(({ event, session }) => {
   // "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "PASSWORD_RECOVERY"
 });
-
-// Recovery / account management (opt-in permissions)
-await resetPasswordForEmail({ email });
-await verifyOtp({ email, token, type: "recovery" });  // emits PASSWORD_RECOVERY
-await updateUser({ password: "new-password" });
-
-await signOut();
 ```
 
-All rejections carry `{ kind, message, retryAfterSecs? }`; test with
-`isAuthError(e)`. Kinds: `invalidCredentials`, `emailAlreadyRegistered`,
-`emailNotConfirmed`, `otpExpired`, `network`, `configuration`,
-`sessionExpired`, `oauthFlowInterrupted`, `rateLimited`, `permissionDenied`,
-`unknown`. No operation waits indefinitely (15 s network budget).
-
-The session object handed to the frontend never contains the refresh token.
-
-## Rust API
+**And from Rust, symmetrically:**
 
 ```rust
-use tauri_plugin_supabase_auth::{SupabaseAuthExt, OtpTarget, OtpKind};
+use tauri_plugin_supabase_auth::SupabaseAuthExt;
 
 let auth = app.supabase_auth();
-let session = auth.sign_in_with_password("a@b.c", "pw").await?; // full session
-let user = auth.user().await;
-auth.on_auth_state_change(|payload| { /* ... */ });
-auth.sign_out().await?;
+let session = auth.sign_in_with_password("a@b.co", "hunter22").await?;
+auth.on_auth_state_change(|payload| println!("auth: {:?}", payload.event));
 ```
 
-Every command has a Rust twin (`sign_up`, `sign_in_with_otp(OtpTarget::Email(..), ..)`,
-`verify_otp`, `start_oauth_flow`, `refresh_session`, `reset_password_for_email`,
-`update_user`, …). Rust callers receive the **full** session including the
-refresh token.
+## 🧭 The full surface
 
-## Behavior notes
+### Frontend bindings (`@exegia/plugin-supabase-auth`)
 
-- **Persistence**: sessions are stored only in per-user private locations
-  (OS keychain by default). Corrupt or revoked stored sessions restore as
-  signed-out — never a crash. Offline at startup with an unexpired token?
-  You stay signed in on the stored session and refresh retries in the
-  background.
-- **Consistency**: all session mutations serialize through one lock; a
-  sign-out racing a token refresh always ends fully signed out.
-- **OAuth**: system browser + `http://127.0.0.1` loopback + PKCE (S256).
-  Abandoned flows time out; `cancelOAuthFlow()` aborts immediately; a
-  cancelled flow can never establish a session.
+| Function | Notes |
+|---|---|
+| `signUp({ email, password, data? })` | Reports `pendingConfirmation` when the project requires email confirmation |
+| `signInWithPassword({ email, password })` | |
+| `signInWithOtp({ email \| phone, redirectTo? })` | Sends a magic link / one-time code |
+| `verifyOtp({ email \| phone, token, type })` | `type: "email" \| "sms" \| "recovery"` |
+| `signInWithOAuth({ provider, scopes? })` | Opens the **system browser**; resolves when the round-trip completes |
+| `cancelOAuthFlow()` | Aborts an in-flight browser round-trip |
+| `signOut()` | Local-first: state clears even if the network is down |
+| `getSession()` / `getUser()` | On-demand state |
+| `refreshSession()` | Manual refresh (background refresh is automatic) |
+| `resetPasswordForEmail({ email })` | Opt-in permission |
+| `updateUser({ email?, password?, data? })` | Opt-in permission |
+| `onAuthStateChange(cb)` | Push events — no polling |
 
-## Development
+Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check with `isAuthError(e)`. Kinds: `invalidCredentials` · `emailAlreadyRegistered` · `emailNotConfirmed` · `otpExpired` · `network` · `configuration` · `sessionExpired` · `oauthFlowInterrupted` · `rateLimited` · `permissionDenied` · `unknown`. **No operation hangs** — everything resolves or fails within a 15 s network budget.
+
+### UI kit blocks (`@exegia/auth-ui`)
+
+| Block | Flow |
+|---|---|
+| `<SignInForm />` | Email + password, optional social buttons, forgot-password link |
+| `<SignUpForm />` | With confirm-password and "check your inbox" state |
+| `<OtpForm />` | Two steps: request code → redeem in a segmented OTP field |
+| `<ForgotPasswordForm />` | Request reset → redeem emailed recovery code **in-app** → hand off to password update |
+| `<UpdatePasswordForm />` | Signed-in password change |
+| `<SocialButtons />` | Per-provider buttons with in-flight/cancel handling |
+
+All blocks: zod validation before any network call, loading/success/error states, keyboard- and screen-reader-operable (axe-tested), user-facing error messages overridable per block via `errorMessages`.
+
+### How the desktop OAuth flow works
+
+```mermaid
+sequenceDiagram
+    participant App as Your app
+    participant P as Plugin (Rust)
+    participant B as System browser
+    participant S as Supabase
+
+    App->>P: signInWithOAuth({ provider: "github" })
+    P->>P: generate PKCE verifier + challenge,<br/>bind one-shot server on 127.0.0.1
+    P->>B: open /authorize?flow_type=pkce
+    B->>S: user consents at provider
+    S-->>B: redirect to http://127.0.0.1:43823/callback?code=…
+    B->>P: loopback callback (state-checked)
+    P->>S: POST /token?grant_type=pkce (code + verifier)
+    S-->>P: session
+    P-->>App: Session + SIGNED_IN event
+```
+
+Loopback + PKCE is the provider-sanctioned native-app pattern (Google and GitHub reject custom URI schemes as redirect targets). Add `http://127.0.0.1:43823/callback` to your provider's redirect allow-list.
+
+### Guarantees worth knowing
+
+- 🔒 **Refresh tokens never reach the webview.** Frontend sessions are sanitized; only Rust sees the full session.
+- 🔁 **No zombie sessions.** All mutations serialize through one lock — a sign-out racing a background refresh always ends fully signed out.
+- ✈️ **Offline-friendly.** Launching offline with an unexpired stored session keeps you signed in; refresh retries in the background. Corrupt or revoked stored sessions degrade to signed-out — never a crash.
+
+## 🕹️ Try the example app
 
 ```bash
-cargo test          # unit + wiremock contract tests
-pnpm install && pnpm -r build
-pnpm --filter @exegia/auth-ui test   # UI kit tests (incl. accessibility)
-pnpm test:e2e       # lifecycle E2E — needs SUPABASE_E2E_URL / SUPABASE_E2E_KEY
+git clone https://github.com/exegia/corpora-auth && cd corpora-auth
+supabase init && supabase start        # local stack; mail UI at http://127.0.0.1:54324
+pnpm install
+pnpm --filter tauri-app tauri dev
 ```
 
-## License
+The example wires every block to the local stack out of the box — see [examples/tauri-app](./examples/tauri-app).
 
-Licensed under either of [Apache License, Version 2.0](./LICENSE-APACHE) or
-[MIT license](./LICENSE-MIT) at your option.
+## 🗺️ Roadmap
 
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in this work by you, as defined in the Apache-2.0
-license, shall be dual licensed as above, without any additional terms or
-conditions.
+- [ ] **Account linking** — attach OAuth identities to an existing email account
+- [ ] **Sign-up onboarding steps** — collect profile info (`user_metadata`) in a multi-step block
+- [ ] **MFA / TOTP** — enrollment + challenge blocks once the underlying flows stabilize
+- [ ] **Deep-link OAuth** — custom-scheme return path as an alternative to loopback
+- [ ] **crates.io release** — currently consumed as a git dependency
+- [ ] Tauri **mobile** targets (iOS/Android)
+
+## 🛠️ Development
+
+```bash
+cargo test                              # 40 Rust contract tests (wiremock GoTrue)
+pnpm install && pnpm -r build
+pnpm --filter @exegia/auth-ui test      # 44 UI tests incl. accessibility
+pnpm test:e2e                           # lifecycle E2E vs a live stack (SUPABASE_E2E_URL / SUPABASE_E2E_KEY)
+```
+
+Design docs (spec, plan, research, contracts) live in [`specs/001-supabase-auth-plugin/`](./specs/001-supabase-auth-plugin).
+
+## 📄 License
+
+Licensed under either of [Apache License, Version 2.0](./LICENSE-APACHE) or [MIT license](./LICENSE-MIT) at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
