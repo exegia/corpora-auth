@@ -1,0 +1,40 @@
+[package]
+name = "tauri-plugin-supabase-auth"
+version = "0.1.0"
+authors = ["Emmanuel De Freitas"]
+description = "Supabase authentication plugin for Tauri v2 desktop apps"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/emmanuel-defreitas/corpora-auth"
+links = "tauri-plugin-supabase-auth"
+exclude = ["/examples", "/ui", "/guest-js", "/node_modules", "/.github"]
+
+[dependencies]
+tauri = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
+tokio = { version = "1", features = ["sync", "time", "rt", "macros"] }
+supabase-lib-rs = { version = "0.5.3", default-features = false, features = ["auth", "native", "session-management"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+url = "2"
+base64 = "0.22"
+rand = "0.8"
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+open = "5"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
+
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"
+tauri = { version = "2", features = ["test"] }
+
+[lib]
+name = "tauri_plugin_supabase_auth"

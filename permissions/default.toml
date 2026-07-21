@@ -1,0 +1,22 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = """Safe default set for the Supabase auth plugin: the session
+lifecycle a typical app needs (sign-up, sign-in via password/OTP/OAuth,
+sign-out, session/user queries, manual refresh).
+
+Account-mutation commands are excluded and must be opted into explicitly:
+`supabase-auth:allow-reset-password-for-email` and
+`supabase-auth:allow-update-user`."""
+permissions = [
+    "allow-sign-up",
+    "allow-sign-in-with-password",
+    "allow-sign-in-with-otp",
+    "allow-verify-otp",
+    "allow-start-oauth-flow",
+    "allow-cancel-oauth-flow",
+    "allow-sign-out",
+    "allow-get-session",
+    "allow-get-user",
+    "allow-refresh-session",
+]

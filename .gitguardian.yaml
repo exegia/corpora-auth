@@ -1,0 +1,6 @@
+version: 2
+secret:
+  ignored-paths:
+    # Contains only the public Supabase local-dev demo anon key that ships
+    # with every `supabase start` installation — not a secret.
+    - examples/tauri-app/src-tauri/tauri.conf.json
