@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-verify-otp"
+description = "Enables the verify_otp command without any pre-configured scope."
+commands.allow = ["verify_otp"]
+
+[[permission]]
+identifier = "deny-verify-otp"
+description = "Denies the verify_otp command without any pre-configured scope."
+commands.deny = ["verify_otp"]

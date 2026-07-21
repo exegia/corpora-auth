@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capabilities for the main window of the example app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "supabase-auth:default",
+    "supabase-auth:allow-reset-password-for-email",
+    "supabase-auth:allow-update-user"
+  ]
+}

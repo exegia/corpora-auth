@@ -1,0 +1,28 @@
+{
+  "name": "@corpora/plugin-supabase-auth",
+  "version": "0.1.0",
+  "description": "TypeScript bindings for tauri-plugin-supabase-auth",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup index.ts --format esm,cjs --dts --clean",
+    "test": "echo \"no tests in guest-js (covered by ui + rust suites)\""
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0"
+  }
+}

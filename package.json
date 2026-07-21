@@ -1,0 +1,10 @@
+{
+  "name": "corpora-auth-workspace",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:e2e": "cargo test --test e2e_lifecycle -- --ignored --nocapture"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

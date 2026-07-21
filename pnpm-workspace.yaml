@@ -1,0 +1,4 @@
+packages:
+  - guest-js
+  - ui
+  - examples/tauri-app
