@@ -6,7 +6,7 @@ description = "Supabase authentication plugin for Tauri v2 desktop apps"
 edition = "2021"
 rust-version = "1.80"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/emmanuel-defreitas/corpora-auth"
+repository = "https://github.com/exegia/corpora-auth"
 links = "tauri-plugin-supabase-auth"
 exclude = ["/examples", "/ui", "/guest-js", "/node_modules", "/.github"]
 
