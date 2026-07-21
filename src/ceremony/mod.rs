@@ -15,6 +15,8 @@ use std::sync::Arc;
 
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "windows")]
+mod windows;
 
 /// Can this provider run a prompt on this device, right now?
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,16 +52,20 @@ pub trait CeremonyProvider: Send + Sync {
 /// at plugin init with the configured asserted origin (research R8) and
 /// installed as the fallback tier — an app-supplied provider always wins.
 /// macOS ignores `origin`: the OS derives it from the app's Associated
-/// Domains binding. Windows (which does assert the configured origin) lands
-/// in T025; Linux has no platform authenticator and always resolves to
-/// `None` (FR-007).
+/// Domains binding. Windows asserts the configured origin in
+/// `clientDataJSON` (without it the provider reports unavailable). Linux has
+/// no platform authenticator and always resolves to `None` (FR-007).
 #[allow(unused_variables)]
 pub fn builtin_provider(origin: Option<&str>) -> Option<Arc<dyn CeremonyProvider>> {
     #[cfg(target_os = "macos")]
     {
         Some(Arc::new(macos::MacOsCeremony::new()))
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        Some(Arc::new(windows::WindowsCeremony::new(origin)))
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         None
     }
