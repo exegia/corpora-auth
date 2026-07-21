@@ -6,7 +6,10 @@ use tauri::{AppHandle, Runtime, State};
 use crate::desktop::SupabaseAuth;
 use crate::engine::{OtpKind, OtpTarget};
 use crate::error::{Error, Result};
-use crate::models::{Identity, SanitizedSession, SignUpResult, User};
+use crate::models::{
+    Identity, Passkey, PasskeyCapability, PasskeyChallenge, PasskeyRegistrationResult,
+    PasskeySignInResult, SanitizedSession, SignUpResult, User,
+};
 
 fn otp_target(email: Option<String>, phone: Option<String>) -> Result<OtpTarget> {
     match (email, phone) {
@@ -185,4 +188,105 @@ pub async fn unlink_identity<R: Runtime>(
     identity_id: String,
 ) -> Result<Vec<Identity>> {
     state.core().unlink_identity(&identity_id).await
+}
+
+// -- passkeys (feature 004) ---------------------------------------------------
+
+#[tauri::command]
+pub async fn get_passkey_capability<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+) -> Result<PasskeyCapability> {
+    Ok(state.core().passkey_capability())
+}
+
+#[tauri::command]
+pub async fn register_passkey<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+) -> Result<PasskeyRegistrationResult> {
+    state.core().register_passkey().await
+}
+
+#[tauri::command]
+pub async fn sign_in_with_passkey<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+) -> Result<PasskeySignInResult> {
+    state.core().sign_in_with_passkey().await
+}
+
+#[tauri::command]
+pub async fn list_passkeys<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+) -> Result<Vec<Passkey>> {
+    state.core().list_passkeys().await
+}
+
+#[tauri::command]
+pub async fn rename_passkey<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+    passkey_id: String,
+    friendly_name: String,
+) -> Result<Passkey> {
+    state
+        .core()
+        .rename_passkey(&passkey_id, &friendly_name)
+        .await
+}
+
+#[tauri::command]
+pub async fn delete_passkey<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+    passkey_id: String,
+) -> Result<()> {
+    state.core().delete_passkey(&passkey_id).await
+}
+
+// Two-step surface: the app runs its own ceremony (US4).
+
+#[tauri::command]
+pub async fn passkey_registration_options<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+) -> Result<PasskeyChallenge> {
+    state.core().passkey_registration_options().await
+}
+
+#[tauri::command]
+pub async fn passkey_registration_verify<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+    challenge_id: String,
+    credential: serde_json::Value,
+) -> Result<Passkey> {
+    state
+        .core()
+        .passkey_registration_verify(&challenge_id, &credential)
+        .await
+}
+
+#[tauri::command]
+pub async fn passkey_authentication_options<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+) -> Result<PasskeyChallenge> {
+    state.core().passkey_authentication_options().await
+}
+
+#[tauri::command]
+pub async fn passkey_authentication_verify<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+    challenge_id: String,
+    credential: serde_json::Value,
+) -> Result<SanitizedSession> {
+    state
+        .core()
+        .passkey_authentication_verify(&challenge_id, &credential)
+        .await
+        .map(|s| s.sanitized())
 }

@@ -12,6 +12,16 @@
     "supabase-auth:allow-update-user",
     "supabase-auth:allow-get-identities",
     "supabase-auth:allow-link-identity",
-    "supabase-auth:allow-unlink-identity"
+    "supabase-auth:allow-unlink-identity",
+    "supabase-auth:allow-get-passkey-capability",
+    "supabase-auth:allow-register-passkey",
+    "supabase-auth:allow-sign-in-with-passkey",
+    "supabase-auth:allow-list-passkeys",
+    "supabase-auth:allow-rename-passkey",
+    "supabase-auth:allow-delete-passkey",
+    "supabase-auth:allow-passkey-registration-options",
+    "supabase-auth:allow-passkey-registration-verify",
+    "supabase-auth:allow-passkey-authentication-options",
+    "supabase-auth:allow-passkey-authentication-verify"
   ]
 }

@@ -105,7 +105,20 @@ That's the minimum. Everything else has sensible defaults:
 "supabase-auth:allow-update-user",
 "supabase-auth:allow-get-identities",     // account linking (view)
 "supabase-auth:allow-link-identity",      // account linking (connect)
-"supabase-auth:allow-unlink-identity"     // account linking (disconnect)
+"supabase-auth:allow-unlink-identity",    // account linking (disconnect)
+
+// Passkeys (beta) — grant the sign-in and management surfaces independently:
+"supabase-auth:allow-get-passkey-capability",
+"supabase-auth:allow-sign-in-with-passkey",         // sign-in surface
+"supabase-auth:allow-register-passkey",             // management surface…
+"supabase-auth:allow-list-passkeys",
+"supabase-auth:allow-rename-passkey",
+"supabase-auth:allow-delete-passkey",
+// …and the two-step surface, only if the app runs its own WebAuthn ceremony:
+"supabase-auth:allow-passkey-registration-options",
+"supabase-auth:allow-passkey-registration-verify",
+"supabase-auth:allow-passkey-authentication-options",
+"supabase-auth:allow-passkey-authentication-verify"
 ```
 
 ### 5. Sign someone in
@@ -177,9 +190,14 @@ auth.on_auth_state_change(|payload| println!("auth: {:?}", payload.event));
 | `getIdentities()` | Lists the sign-in identities on the account · opt-in permission |
 | `linkIdentity({ provider, scopes? })` | Attaches a provider identity to the **current** account via the system browser · opt-in permission |
 | `unlinkIdentity({ identityId })` | Disconnects an identity (the last sign-in method is refused) · opt-in permission |
+| `getPasskeyCapability()` | Can this device prompt for passkeys? Never touches the network — gate your passkey UI on it |
+| `signInWithPasskey()` | Discoverable sign-in, no email needed · resolves `{status: "cancelled"}` if the user dismisses the prompt · opt-in permission |
+| `registerPasskey()` | Adds a passkey to the current account (name is server-derived; rename after) · opt-in permission |
+| `listPasskeys()` / `renamePasskey({...})` / `deletePasskey({...})` | Passkey management · opt-in permissions · deleting the **last** passkey is *not* blocked server-side |
+| `passkey{Registration,Authentication}{Options,Verify}(...)` | Two-step surface for app-supplied WebAuthn ceremonies · opt-in permissions |
 | `onAuthStateChange(cb)` | Push events — no polling |
 
-Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check with `isAuthError(e)`. Kinds: `invalidCredentials` · `emailAlreadyRegistered` · `emailNotConfirmed` · `otpExpired` · `network` · `configuration` · `sessionExpired` · `oauthFlowInterrupted` · `rateLimited` · `permissionDenied` · `identityAlreadyLinked` · `lastSignInMethod` · `unknown`. **No operation hangs** — everything resolves or fails within a 15 s network budget.
+Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check with `isAuthError(e)`. Kinds: `invalidCredentials` · `emailAlreadyRegistered` · `emailNotConfirmed` · `otpExpired` · `network` · `configuration` · `sessionExpired` · `oauthFlowInterrupted` · `rateLimited` · `permissionDenied` · `identityAlreadyLinked` · `lastSignInMethod` · `passkeyChallengeExpired` · `passkeyVerificationFailed` · `passkeyUnsupported` · `unknown`. **No operation hangs** — everything resolves or fails within a 15 s network budget.
 
 ### UI kit blocks (`@exegia/auth-ui`)
 
@@ -193,6 +211,8 @@ Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check w
 | `<SocialButtons />` | Per-provider buttons with in-flight/cancel handling |
 | `<OnboardingFlow />` | Multi-step sign-up: credentials → confirmation waiting state → declared profile steps, resumable via `user_metadata` (needs `allow-update-user`) |
 | `<LinkedAccounts />` | Settings block: lists connected identities, connect/disconnect with in-flight & last-method safeguards (needs the three identity permissions + manual linking enabled) |
+| `<PasskeySignIn />` | Sign-in entry point that renders **nothing** unless the device can run passkey prompts; cancellation returns silently to idle |
+| `<PasskeyManager />` | Settings block: list/rename/delete passkeys + "Add a passkey" (delete sits behind an explicit confirmation, with a warning on the last passkey) |
 
 All blocks: zod validation before any network call, loading/success/error states, keyboard- and screen-reader-operable (axe-tested), user-facing error messages overridable per block via `errorMessages`.
 
@@ -217,6 +237,55 @@ sequenceDiagram
 ```
 
 Loopback + PKCE is the provider-sanctioned native-app pattern (Google and GitHub reject custom URI schemes as redirect targets). Add `http://127.0.0.1:43823/callback` to your provider's redirect allow-list.
+
+### Passkeys (beta)
+
+Supabase Auth's passkey API is **experimental beta** (shipped 2026-05); this plugin pins against the current GoTrue behavior and may need updates if the API changes.
+
+**Project prerequisites (one-time, app owner):**
+
+1. Enable passkeys: dashboard *Authentication → Passkeys*, or `[auth.passkey] enabled = true` in `supabase/config.toml` (local), or `GOTRUE_PASSKEY_ENABLED=true` (self-hosted).
+2. Set the shared WebAuthn relying-party config: `GOTRUE_WEBAUTHN_RP_ID` (bare domain you control — ⚠️ **changing it later invalidates every enrolled passkey**), `GOTRUE_WEBAUTHN_RP_DISPLAY_NAME`, and `GOTRUE_WEBAUTHN_RP_ORIGINS` (must include the origin your desktop ceremony asserts — see `passkeys.origin` below).
+3. Optional knobs: `GOTRUE_PASSKEY_MAX_PASSKEYS_PER_USER` (default 10), `GOTRUE_WEBAUTHN_CHALLENGE_EXPIRY_DURATION` (default 5 m).
+4. macOS native ceremonies additionally need an `apple-app-site-association` file with `webcredentials` served from the RP-ID domain, the Associated Domains entitlement, and a signed app.
+
+**Two things can make passkeys unavailable — they surface differently by design:**
+
+- *Device capability* (`getPasskeyCapability()`): can this device run a prompt? Free, offline, check it before showing any passkey UI.
+- *Project configuration*: passkeys disabled on the server surfaces as a `configuration` error at call time, with the exact setting named in the message.
+
+**The WebAuthn ceremony is pluggable.** The plugin owns every server round-trip; only the OS credential prompt is delegated to a *ceremony provider*:
+
+```rust
+// Rust: supply a ceremony provider (wins over any built-in)
+use tauri_plugin_supabase_auth::{Availability, CeremonyOutcome, CeremonyProvider, PluginBuilder};
+
+struct MyCeremony;
+impl CeremonyProvider for MyCeremony {
+    fn availability(&self) -> Availability { Availability::Available }
+    fn create(&self, options_json: &str) -> CeremonyOutcome { /* OS registration prompt */ todo!() }
+    fn get(&self, options_json: &str) -> CeremonyOutcome { /* OS assertion prompt */ todo!() }
+}
+
+tauri::Builder::default()
+    .plugin(PluginBuilder::new().ceremony_provider(MyCeremony).build())
+```
+
+```ts
+// JS alternative: run the ceremony where the webview supports it
+// (e.g. WebView2 on Windows exposes navigator.credentials natively)
+import {
+  passkeyRegistrationOptions, passkeyRegistrationVerify,
+} from "@exegia/plugin-supabase-auth";
+
+const { challengeId, options } = await passkeyRegistrationOptions();
+const credential = await navigator.credentials.create({ publicKey: options });
+await passkeyRegistrationVerify({ challengeId, credential: credential.toJSON() });
+```
+
+Built-in native ceremonies for macOS (AuthenticationServices) and Windows (`webauthn.dll`) are the feature's Phase 2 and land next; until then, supply a ceremony via one of the two surfaces above. Linux has no platform authenticator — `getPasskeyCapability()` reports it honestly and the kit blocks hide themselves. When a built-in ceremony is used, set `plugins.supabase-auth.passkeys.origin` in `tauri.conf.json` to the https origin it should assert (must be listed in `GOTRUE_WEBAUTHN_RP_ORIGINS`).
+
+⚠️ Deleting a user's **last** passkey is not blocked server-side. `<PasskeyManager />` warns before it happens; if you build your own UI, do the same — and keep another sign-in method on every account.
 
 ### Guarantees worth knowing
 

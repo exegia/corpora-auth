@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-passkey-authentication-options"
+description = "Enables the passkey_authentication_options command without any pre-configured scope."
+commands.allow = ["passkey_authentication_options"]
+
+[[permission]]
+identifier = "deny-passkey-authentication-options"
+description = "Denies the passkey_authentication_options command without any pre-configured scope."
+commands.deny = ["passkey_authentication_options"]

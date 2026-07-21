@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::error::{classify_auth_text, Error, ErrorKind, Result};
-use crate::models::{Identity, Session, SignUpResult, SignUpStatus, User};
+use crate::models::{Identity, Passkey, Session, SignUpResult, SignUpStatus, User};
 
 pub struct AuthEngine {
     client: supabase::Client,
@@ -228,6 +228,93 @@ impl AuthEngine {
             .await
             .map_err(manual_linking_hint)
     }
+
+    // -- passkeys (feature 004; beta GoTrue routes — REST only, research R1) --
+
+    pub async fn passkey_registration_options(
+        &self,
+        access_token: &str,
+    ) -> Result<(String, serde_json::Value, i64)> {
+        self.rest
+            .passkey_options("registration", Some(access_token))
+            .await
+            .map_err(passkey_hint)
+    }
+
+    pub async fn passkey_registration_verify(
+        &self,
+        access_token: &str,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<Passkey> {
+        self.rest
+            .passkey_registration_verify(access_token, challenge_id, credential)
+            .await
+            .map_err(passkey_hint)
+    }
+
+    pub async fn passkey_authentication_options(&self) -> Result<(String, serde_json::Value, i64)> {
+        self.rest
+            .passkey_options("authentication", None)
+            .await
+            .map_err(passkey_hint)
+    }
+
+    /// Verifies a discoverable-login assertion and adopts the session.
+    pub async fn passkey_authentication_verify(
+        &self,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<Session> {
+        let session = self
+            .rest
+            .passkey_authentication_verify(challenge_id, credential)
+            .await
+            .map_err(passkey_hint)?;
+        self.adopt(&session).await;
+        Ok(session)
+    }
+
+    pub async fn list_passkeys(&self, access_token: &str) -> Result<Vec<Passkey>> {
+        self.rest
+            .list_passkeys(access_token)
+            .await
+            .map_err(passkey_hint)
+    }
+
+    pub async fn rename_passkey(
+        &self,
+        access_token: &str,
+        passkey_id: &str,
+        friendly_name: &str,
+    ) -> Result<Passkey> {
+        self.rest
+            .rename_passkey(access_token, passkey_id, friendly_name)
+            .await
+            .map_err(passkey_hint)
+    }
+
+    pub async fn delete_passkey(&self, access_token: &str, passkey_id: &str) -> Result<()> {
+        self.rest
+            .delete_passkey(access_token, passkey_id)
+            .await
+            .map_err(passkey_hint)
+    }
+}
+
+/// Makes the `passkey_disabled` failure actionable (FR-010). GoTrue answers
+/// HTTP 404 with error_code `passkey_disabled` when the capability is off.
+fn passkey_hint(mut e: Error) -> Error {
+    if e.kind == ErrorKind::Configuration && e.message.contains("passkey_disabled") {
+        e.message.push_str(
+            " — enable passkeys on the project: [auth.passkey] enabled = true \
+             in supabase/config.toml (local), GOTRUE_PASSKEY_ENABLED=true \
+             (self-hosted), or Authentication → Passkeys in the dashboard; \
+             the shared WebAuthn RP settings (GOTRUE_WEBAUTHN_RP_ID, \
+             RP_DISPLAY_NAME, RP_ORIGINS) must also be configured",
+        );
+    }
+    e
 }
 
 /// Makes the `manual_linking_disabled` failure actionable (FR edge case).
@@ -299,6 +386,29 @@ impl WireIdentity {
             email: self.email,
             created_at: self.created_at,
             last_sign_in_at: self.last_sign_in_at,
+        }
+    }
+}
+
+/// GoTrue `PasskeyListItem` / registration-verify metadata (research R1).
+#[derive(Deserialize)]
+struct WirePasskey {
+    id: String,
+    #[serde(default)]
+    friendly_name: Option<String>,
+    #[serde(default)]
+    created_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    last_used_at: Option<DateTime<Utc>>,
+}
+
+impl WirePasskey {
+    fn into_passkey(self) -> Passkey {
+        Passkey {
+            id: self.id,
+            friendly_name: self.friendly_name,
+            created_at: self.created_at,
+            last_used_at: self.last_used_at,
         }
     }
 }
@@ -539,6 +649,140 @@ impl RestClient {
                 "{}/auth/v1/user/identities/{identity_id}",
                 self.base
             ))
+            .header("apikey", &self.key)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .send()
+            .await?;
+        Self::ok_or_classified(resp).await?;
+        Ok(())
+    }
+
+    // -- passkeys (research R1) ---------------------------------------------
+
+    /// `POST /passkeys/{registration|authentication}/options`. Bearer for
+    /// registration; apikey-only for authentication (anonymous, rate-limited).
+    async fn passkey_options(
+        &self,
+        kind: &str,
+        access_token: Option<&str>,
+    ) -> Result<(String, serde_json::Value, i64)> {
+        let mut req = self
+            .http
+            .post(format!("{}/auth/v1/passkeys/{kind}/options", self.base))
+            .header("apikey", &self.key);
+        if let Some(token) = access_token {
+            req = req.header("Authorization", format!("Bearer {token}"));
+        }
+        let resp = Self::ok_or_classified(req.send().await?).await?;
+        #[derive(Deserialize)]
+        struct WireChallenge {
+            challenge_id: String,
+            options: serde_json::Value,
+            expires_at: i64,
+        }
+        let wire: WireChallenge = resp
+            .json()
+            .await
+            .map_err(|e| Error::unknown(format!("unexpected passkey options response: {e}")))?;
+        Ok((wire.challenge_id, wire.options, wire.expires_at))
+    }
+
+    /// `POST /passkeys/registration/verify` — no name field; the server
+    /// derives one from the authenticator AAGUID (research R3).
+    async fn passkey_registration_verify(
+        &self,
+        access_token: &str,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<Passkey> {
+        let resp = self
+            .http
+            .post(format!(
+                "{}/auth/v1/passkeys/registration/verify",
+                self.base
+            ))
+            .header("apikey", &self.key)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .json(&json!({ "challenge_id": challenge_id, "credential": credential }))
+            .send()
+            .await?;
+        let resp = Self::ok_or_classified(resp).await?;
+        let wire: WirePasskey = resp
+            .json()
+            .await
+            .map_err(|e| Error::unknown(format!("unexpected passkey response: {e}")))?;
+        Ok(wire.into_passkey())
+    }
+
+    /// `POST /passkeys/authentication/verify` — standard token response;
+    /// the user is resolved server-side from the assertion's `userHandle`.
+    async fn passkey_authentication_verify(
+        &self,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<Session> {
+        let resp = self
+            .http
+            .post(format!(
+                "{}/auth/v1/passkeys/authentication/verify",
+                self.base
+            ))
+            .header("apikey", &self.key)
+            .json(&json!({ "challenge_id": challenge_id, "credential": credential }))
+            .send()
+            .await?;
+        let resp = Self::ok_or_classified(resp).await?;
+        let wire: WireSession = resp
+            .json()
+            .await
+            .map_err(|e| Error::unknown(format!("unexpected token response: {e}")))?;
+        Ok(wire.into_session())
+    }
+
+    async fn list_passkeys(&self, access_token: &str) -> Result<Vec<Passkey>> {
+        let resp = self
+            .http
+            .get(format!("{}/auth/v1/passkeys", self.base))
+            .header("apikey", &self.key)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .send()
+            .await?;
+        let resp = Self::ok_or_classified(resp).await?;
+        let wire: Vec<WirePasskey> = resp
+            .json()
+            .await
+            .map_err(|e| Error::unknown(format!("unexpected passkey list response: {e}")))?;
+        Ok(wire.into_iter().map(WirePasskey::into_passkey).collect())
+    }
+
+    async fn rename_passkey(
+        &self,
+        access_token: &str,
+        passkey_id: &str,
+        friendly_name: &str,
+    ) -> Result<Passkey> {
+        let resp = self
+            .http
+            .patch(format!("{}/auth/v1/passkeys/{passkey_id}", self.base))
+            .header("apikey", &self.key)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .json(&json!({ "friendly_name": friendly_name }))
+            .send()
+            .await?;
+        let resp = Self::ok_or_classified(resp).await?;
+        let wire: WirePasskey = resp
+            .json()
+            .await
+            .map_err(|e| Error::unknown(format!("unexpected passkey response: {e}")))?;
+        Ok(wire.into_passkey())
+    }
+
+    /// `DELETE /passkeys/{id}` → 204. No last-passkey guardrail server-side
+    /// (research R4) — the warning UX is the kit's responsibility.
+    async fn delete_passkey(&self, access_token: &str, passkey_id: &str) -> Result<()> {
+        let resp = self
+            .http
+            .delete(format!("{}/auth/v1/passkeys/{passkey_id}", self.base))
             .header("apikey", &self.key)
             .header("Authorization", format!("Bearer {access_token}"))
             .send()
