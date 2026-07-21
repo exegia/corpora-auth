@@ -24,7 +24,8 @@ export type AuthChangeEvent =
   | "SIGNED_IN"
   | "SIGNED_OUT"
   | "TOKEN_REFRESHED"
-  | "PASSWORD_RECOVERY";
+  | "PASSWORD_RECOVERY"
+  | "IDENTITIES_CHANGED";
 
 export interface AuthChangePayload {
   event: AuthChangeEvent;
@@ -42,6 +43,8 @@ export type AuthErrorKind =
   | "oauthFlowInterrupted"
   | "rateLimited"
   | "permissionDenied"
+  | "identityAlreadyLinked"
+  | "lastSignInMethod"
   | "unknown";
 
 export interface AuthError {
@@ -80,4 +83,15 @@ export interface UpdateUserOptions {
   email?: string;
   password?: string;
   data?: Record<string, unknown>;
+}
+
+/** One sign-in method attached to the account. `identityId` is the row key
+ * used for unlinking; `providerSubject` is the provider-specific subject. */
+export interface Identity {
+  identityId: string;
+  providerSubject: string;
+  provider: string;
+  email: string | null;
+  createdAt: string | null;
+  lastSignInAt: string | null;
 }

@@ -13,7 +13,7 @@ use wiremock::{Mock, ResponseTemplate};
 
 /// Extracts (redirect_uri, state, code_challenge) from the authorize URL the
 /// flow hands to the browser opener.
-fn parse_authorize(url: &str) -> (String, String, String) {
+fn parse_authorize(url: &str) -> (String, String) {
     let parsed = url::Url::parse(url).unwrap();
     let get = |k: &str| {
         parsed
@@ -22,7 +22,7 @@ fn parse_authorize(url: &str) -> (String, String, String) {
             .map(|(_, v)| v.into_owned())
             .unwrap_or_default()
     };
-    (get("redirect_to"), get("state"), get("code_challenge"))
+    (get("redirect_to"), get("code_challenge"))
 }
 
 fn oauth_harness(url: &str, ports: Vec<u16>, timeout_secs: u32) -> Harness {
@@ -70,7 +70,7 @@ async fn full_round_trip_exchanges_code_and_signs_in() {
     // matching state — first probing that a wrong state is rejected.
     tokio::spawn(async move {
         let authorize_url = url_rx.await.unwrap();
-        let (redirect, state, challenge) = parse_authorize(&authorize_url);
+        let (redirect, challenge) = parse_authorize(&authorize_url);
         assert!(
             !challenge.is_empty(),
             "authorize URL must carry the code challenge"
@@ -78,26 +78,33 @@ async fn full_round_trip_exchanges_code_and_signs_in() {
         assert!(authorize_url.contains("flow_type=pkce"));
         let client = reqwest::Client::new();
 
-        // Wrong state first: must be rejected and NOT consume the one-shot.
+        // Unexpected path first: must be rejected and NOT consume the one-shot.
         let bad = client
-            .get(format!("{redirect}?code=evil&state=WRONG"))
+            .get(redirect.replace("/callback", "/favicon.ico"))
             .send()
             .await
             .unwrap();
-        assert_eq!(bad.status().as_u16(), 400);
+        assert_eq!(bad.status().as_u16(), 404);
 
         let good = client
-            .get(format!("{redirect}?code=the-code&state={state}"))
+            .get(format!("{redirect}?code=the-code"))
             .send()
             .await
             .unwrap();
         assert_eq!(good.status().as_u16(), 200);
     });
 
-    let session = oauth::run_flow(&h.core, "github", None, cancel, move |url| {
-        url_tx.send(url).unwrap();
-        Ok(())
-    })
+    let session = oauth::run_flow(
+        &h.core,
+        "github",
+        None,
+        oauth::FlowKind::SignIn,
+        cancel,
+        move |url| {
+            url_tx.send(url).unwrap();
+            Ok(())
+        },
+    )
     .await
     .unwrap();
     let session = h.core.complete_oauth(session).await.unwrap();
@@ -112,9 +119,16 @@ async fn abandoned_flow_times_out_as_interrupted_and_stays_signed_out() {
     let h = oauth_harness(&server.uri(), vec![43921], 1); // 1s timeout
 
     let cancel = h.core.begin_oauth("github").await.unwrap();
-    let err = oauth::run_flow(&h.core, "github", None, cancel, |_url| Ok(()))
-        .await
-        .unwrap_err();
+    let err = oauth::run_flow(
+        &h.core,
+        "github",
+        None,
+        oauth::FlowKind::SignIn,
+        cancel,
+        |_url| Ok(()),
+    )
+    .await
+    .unwrap_err();
     h.core.abort_oauth().await;
 
     assert_eq!(err.kind, ErrorKind::OauthFlowInterrupted);
@@ -136,9 +150,16 @@ async fn cancellation_interrupts_the_flow() {
         cancel_trigger.notify_waiters();
     });
 
-    let err = oauth::run_flow(&h.core, "github", None, cancel, |_url| Ok(()))
-        .await
-        .unwrap_err();
+    let err = oauth::run_flow(
+        &h.core,
+        "github",
+        None,
+        oauth::FlowKind::SignIn,
+        cancel,
+        |_url| Ok(()),
+    )
+    .await
+    .unwrap_err();
     h.core.abort_oauth().await;
     assert_eq!(err.kind, ErrorKind::OauthFlowInterrupted);
     assert!(h.core.session().await.is_none());

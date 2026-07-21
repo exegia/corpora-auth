@@ -59,6 +59,32 @@ Denies the cancel_oauth_flow command without any pre-configured scope.
 <tr>
 <td>
 
+`supabase-auth:allow-get-identities`
+
+</td>
+<td>
+
+Enables the get_identities command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`supabase-auth:deny-get-identities`
+
+</td>
+<td>
+
+Denies the get_identities command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `supabase-auth:allow-get-session`
 
 </td>
@@ -104,6 +130,32 @@ Enables the get_user command without any pre-configured scope.
 <td>
 
 Denies the get_user command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`supabase-auth:allow-link-identity`
+
+</td>
+<td>
+
+Enables the link_identity command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`supabase-auth:deny-link-identity`
+
+</td>
+<td>
+
+Denies the link_identity command without any pre-configured scope.
 
 </td>
 </tr>
@@ -286,6 +338,32 @@ Enables the start_oauth_flow command without any pre-configured scope.
 <td>
 
 Denies the start_oauth_flow command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`supabase-auth:allow-unlink-identity`
+
+</td>
+<td>
+
+Enables the unlink_identity command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`supabase-auth:deny-unlink-identity`
+
+</td>
+<td>
+
+Denies the unlink_identity command without any pre-configured scope.
 
 </td>
 </tr>

@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AuthChangePayload,
   AuthError,
+  Identity,
   Provider,
   Session,
   SignUpOptions,
@@ -28,6 +29,8 @@ const ERROR_KINDS = new Set([
   "oauthFlowInterrupted",
   "rateLimited",
   "permissionDenied",
+  "identityAlreadyLinked",
+  "lastSignInMethod",
   "unknown",
 ]);
 
@@ -112,9 +115,30 @@ export function updateUser(opts: UpdateUserOptions): Promise<User> {
   return invoke(`${PLUGIN}update_user`, { ...opts });
 }
 
+/** Lists the sign-in identities attached to the current account. */
+export function getIdentities(): Promise<Identity[]> {
+  return invoke(`${PLUGIN}get_identities`);
+}
+
+/**
+ * Links a provider identity to the CURRENT account via the system browser.
+ * Resolves with the refreshed identity list when the round-trip completes.
+ */
+export function linkIdentity(opts: {
+  provider: Provider;
+  scopes?: string[];
+}): Promise<Identity[]> {
+  return invoke(`${PLUGIN}link_identity`, { ...opts });
+}
+
+/** Disconnects an identity by its identityId (row key). */
+export function unlinkIdentity(opts: { identityId: string }): Promise<Identity[]> {
+  return invoke(`${PLUGIN}unlink_identity`, { ...opts });
+}
+
 /**
  * Subscribes to auth state changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED,
- * PASSWORD_RECOVERY). Resolves to an unlisten function.
+ * PASSWORD_RECOVERY, IDENTITIES_CHANGED). Resolves to an unlisten function.
  */
 export function onAuthStateChange(
   cb: (payload: AuthChangePayload) => void,

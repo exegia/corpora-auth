@@ -20,6 +20,10 @@ pub enum ErrorKind {
     OauthFlowInterrupted,
     RateLimited,
     PermissionDenied,
+    /// Linking: the identity is already attached to a different account.
+    IdentityAlreadyLinked,
+    /// Unlinking: refused because it would remove the last sign-in method.
+    LastSignInMethod,
     Unknown,
 }
 
@@ -88,6 +92,15 @@ pub(crate) fn classify_auth_text(text: &str) -> ErrorKind {
         || t.contains("token has expired or is invalid")
     {
         ErrorKind::OtpExpired
+    } else if t.contains("identity_already_exists") {
+        ErrorKind::IdentityAlreadyLinked
+    } else if t.contains("single_identity_not_deletable")
+        || t.contains("email_conflict_identity_not_deletable")
+        || t.contains("at least 1 identity after unlinking")
+    {
+        ErrorKind::LastSignInMethod
+    } else if t.contains("manual_linking_disabled") {
+        ErrorKind::Configuration
     } else if t.contains("refresh_token_not_found")
         || t.contains("refresh token not found")
         || t.contains("session_expired")

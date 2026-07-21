@@ -98,11 +98,14 @@ That's the minimum. Everything else has sensible defaults:
 }
 ```
 
-`supabase-auth:default` covers the everyday lifecycle (sign-up, sign-in via password/OTP/OAuth, sign-out, session queries, refresh). Two commands are deliberately **excluded** and must be opted into:
+`supabase-auth:default` covers the everyday lifecycle (sign-up, sign-in via password/OTP/OAuth, sign-out, session queries, refresh). Account-mutating commands are deliberately **excluded** and must be opted into:
 
 ```jsonc
 "supabase-auth:allow-reset-password-for-email",
-"supabase-auth:allow-update-user"
+"supabase-auth:allow-update-user",
+"supabase-auth:allow-get-identities",     // account linking (view)
+"supabase-auth:allow-link-identity",      // account linking (connect)
+"supabase-auth:allow-unlink-identity"     // account linking (disconnect)
 ```
 
 ### 5. Sign someone in
@@ -140,7 +143,7 @@ await signUp({ email, password });                 // → { status: "signedIn" |
 await signInWithPassword({ email, password });     // → Session (never contains the refresh token)
 
 const unlisten = await onAuthStateChange(({ event, session }) => {
-  // "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "PASSWORD_RECOVERY"
+  // "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "PASSWORD_RECOVERY" | "IDENTITIES_CHANGED"
 });
 ```
 
@@ -171,9 +174,12 @@ auth.on_auth_state_change(|payload| println!("auth: {:?}", payload.event));
 | `refreshSession()` | Manual refresh (background refresh is automatic) |
 | `resetPasswordForEmail({ email })` | Opt-in permission |
 | `updateUser({ email?, password?, data? })` | Opt-in permission |
+| `getIdentities()` | Lists the sign-in identities on the account · opt-in permission |
+| `linkIdentity({ provider, scopes? })` | Attaches a provider identity to the **current** account via the system browser · opt-in permission |
+| `unlinkIdentity({ identityId })` | Disconnects an identity (the last sign-in method is refused) · opt-in permission |
 | `onAuthStateChange(cb)` | Push events — no polling |
 
-Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check with `isAuthError(e)`. Kinds: `invalidCredentials` · `emailAlreadyRegistered` · `emailNotConfirmed` · `otpExpired` · `network` · `configuration` · `sessionExpired` · `oauthFlowInterrupted` · `rateLimited` · `permissionDenied` · `unknown`. **No operation hangs** — everything resolves or fails within a 15 s network budget.
+Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check with `isAuthError(e)`. Kinds: `invalidCredentials` · `emailAlreadyRegistered` · `emailNotConfirmed` · `otpExpired` · `network` · `configuration` · `sessionExpired` · `oauthFlowInterrupted` · `rateLimited` · `permissionDenied` · `identityAlreadyLinked` · `lastSignInMethod` · `unknown`. **No operation hangs** — everything resolves or fails within a 15 s network budget.
 
 ### UI kit blocks (`@exegia/auth-ui`)
 
@@ -186,6 +192,7 @@ Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check w
 | `<UpdatePasswordForm />` | Signed-in password change |
 | `<SocialButtons />` | Per-provider buttons with in-flight/cancel handling |
 | `<OnboardingFlow />` | Multi-step sign-up: credentials → confirmation waiting state → declared profile steps, resumable via `user_metadata` (needs `allow-update-user`) |
+| `<LinkedAccounts />` | Settings block: lists connected identities, connect/disconnect with in-flight & last-method safeguards (needs the three identity permissions + manual linking enabled) |
 
 All blocks: zod validation before any network call, loading/success/error states, keyboard- and screen-reader-operable (axe-tested), user-facing error messages overridable per block via `errorMessages`.
 
@@ -230,7 +237,7 @@ The example wires every block to the local stack out of the box — see [example
 
 ## 🗺️ Roadmap
 
-- [ ] **Account linking** — attach OAuth identities to an existing email account
+- [x] **Account linking** — attach OAuth identities to an existing email account (`<LinkedAccounts />`)
 - [x] **Sign-up onboarding steps** — collect profile info (`user_metadata`) in a multi-step block (`<OnboardingFlow />`)
 - [ ] **MFA / TOTP** — enrollment + challenge blocks once the underlying flows stabilize
 - [ ] **Deep-link OAuth** — custom-scheme return path as an alternative to loopback

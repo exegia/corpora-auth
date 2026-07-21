@@ -72,6 +72,9 @@ pub fn init<R: Runtime>() -> TauriPlugin<R, PluginConfig> {
             commands::refresh_session,
             commands::reset_password_for_email,
             commands::update_user,
+            commands::get_identities,
+            commands::link_identity,
+            commands::unlink_identity,
         ])
         .setup(|app, api| {
             let config = api.config().clone().validate()?;

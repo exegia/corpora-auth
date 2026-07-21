@@ -16,6 +16,7 @@ import { vi } from "vitest";
 import type {
   AuthChangePayload,
   AuthError,
+  Identity,
   Session,
   SignUpResult,
   User,
@@ -34,6 +35,8 @@ const ERROR_KINDS = new Set([
   "oauthFlowInterrupted",
   "rateLimited",
   "permissionDenied",
+  "identityAlreadyLinked",
+  "lastSignInMethod",
   "unknown",
 ]);
 
@@ -70,6 +73,11 @@ export const refreshSession = vi.fn<() => Promise<Session>>();
 export const resetPasswordForEmail =
   vi.fn<(opts: unknown) => Promise<void>>();
 export const updateUser = vi.fn<(opts: unknown) => Promise<User>>();
+export const getIdentities = vi.fn<() => Promise<Identity[]>>();
+export const linkIdentity =
+  vi.fn<(opts: unknown) => Promise<Identity[]>>();
+export const unlinkIdentity =
+  vi.fn<(opts: unknown) => Promise<Identity[]>>();
 export const onAuthStateChange =
   vi.fn<
     (cb: (payload: AuthChangePayload) => void) => Promise<() => void>
@@ -106,6 +114,9 @@ export function resetAuthMocks(): void {
     refreshSession,
     resetPasswordForEmail,
     updateUser,
+    getIdentities,
+    linkIdentity,
+    unlinkIdentity,
     onAuthStateChange,
   ]) {
     fn.mockReset();
@@ -165,6 +176,28 @@ export function mockSignUpPendingConfirmation(): void {
 /** Makes `signInWithPassword` reject with `emailNotConfirmed`. */
 export function mockSignInEmailNotConfirmed(): void {
   signInWithPassword.mockRejectedValue(makeAuthError("emailNotConfirmed"));
+}
+
+/* ------------------------------------------------------------------ */
+/* Identity fixtures (feature 003)                                     */
+/* ------------------------------------------------------------------ */
+
+/** One identity row for the given provider. Override the row key via `id`. */
+export function testIdentity(
+  provider: string,
+  id = `${provider}-identity-id`,
+): Identity {
+  return {
+    identityId: id,
+    providerSubject: `${provider}-subject`,
+    provider,
+    email:
+      provider === "email"
+        ? "ada@example.com"
+        : `ada+${provider}@example.com`,
+    createdAt: "2026-01-01T00:00:00Z",
+    lastSignInAt: "2026-07-20T00:00:00Z",
+  };
 }
 
 /**
