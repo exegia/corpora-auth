@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { User } from "@corpora/plugin-supabase-auth";
+import type { User } from "@exegia/plugin-supabase-auth";
 import type { z } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";

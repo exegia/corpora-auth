@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { z } from "zod";
 
-vi.mock("@corpora/plugin-supabase-auth", () => import("@/test/mocks"));
+vi.mock("@exegia/plugin-supabase-auth", () => import("@/test/mocks"));
 
 import { SignUpForm } from "@/blocks/sign-up-form";
 import * as bindings from "@/test/mocks";

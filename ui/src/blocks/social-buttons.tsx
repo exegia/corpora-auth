@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Provider, Session } from "@corpora/plugin-supabase-auth";
+import type { Provider, Session } from "@exegia/plugin-supabase-auth";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import type { ErrorMessageOverrides } from "@/lib/error-messages";

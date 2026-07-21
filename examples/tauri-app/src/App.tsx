@@ -7,8 +7,8 @@ import {
   SignUpForm,
   UpdatePasswordForm,
   useSession,
-} from "@corpora/auth-ui";
-import { signOut } from "@corpora/plugin-supabase-auth";
+} from "@exegia/auth-ui";
+import { signOut } from "@exegia/plugin-supabase-auth";
 
 type Screen = "sign-in" | "sign-up" | "otp" | "forgot-password";
 

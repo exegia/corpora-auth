@@ -10,10 +10,10 @@ importers:
 
   examples/tauri-app:
     dependencies:
-      '@corpora/auth-ui':
+      '@exegia/auth-ui':
         specifier: workspace:*
         version: link:../../ui
-      '@corpora/plugin-supabase-auth':
+      '@exegia/plugin-supabase-auth':
         specifier: workspace:*
         version: link:../../guest-js
       '@tauri-apps/api':
@@ -72,7 +72,7 @@ importers:
       '@base-ui/react':
         specifier: ^1.0.0
         version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@corpora/plugin-supabase-auth':
+      '@exegia/plugin-supabase-auth':
         specifier: workspace:*
         version: link:../guest-js
       class-variance-authority:

@@ -18,7 +18,7 @@ import {
   type SignUpResult,
   type UpdateUserOptions,
   type User,
-} from "@corpora/plugin-supabase-auth";
+} from "@exegia/plugin-supabase-auth";
 
 /** Discriminated result: never throws — errors come back as `{ ok: false }`. */
 export type AuthResult<T = void> =

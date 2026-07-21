@@ -11,8 +11,8 @@
     "test": "echo \"example app: see root pnpm test:e2e (Rust lifecycle E2E)\""
   },
   "dependencies": {
-    "@corpora/auth-ui": "workspace:*",
-    "@corpora/plugin-supabase-auth": "workspace:*",
+    "@exegia/auth-ui": "workspace:*",
+    "@exegia/plugin-supabase-auth": "workspace:*",
     "@tauri-apps/api": "^2.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

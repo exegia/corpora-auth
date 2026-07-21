@@ -11,8 +11,8 @@ Repository layout:
 | Path | What it is |
 |---|---|
 | `/` (crate root) | The Rust plugin `tauri-plugin-supabase-auth` |
-| `guest-js/` | TypeScript bindings, published as `@corpora/plugin-supabase-auth` |
-| `ui/` | Auth UI kit (coss ui components + blocks), `@corpora/auth-ui` — see [ui/README.md](./ui/README.md) |
+| `guest-js/` | TypeScript bindings, published as `@exegia/plugin-supabase-auth` |
+| `ui/` | Auth UI kit (coss ui components + blocks), `@exegia/auth-ui` — see [ui/README.md](./ui/README.md) |
 | `examples/tauri-app/` | Runnable example wiring plugin + UI kit — see [examples/tauri-app/README.md](./examples/tauri-app/README.md) |
 
 ## Install
@@ -30,7 +30,7 @@ tauri::Builder::default()
 ```
 
 ```bash
-pnpm add @corpora/plugin-supabase-auth
+pnpm add @exegia/plugin-supabase-auth
 ```
 
 ## Configure (`tauri.conf.json`)
@@ -88,14 +88,14 @@ commands are **excluded by default** and need explicit opt-in:
 Every command also has `supabase-auth:allow-*` / `deny-*` permissions for
 fine-grained control.
 
-## Frontend API (`@corpora/plugin-supabase-auth`)
+## Frontend API (`@exegia/plugin-supabase-auth`)
 
 ```ts
 import {
   signUp, signInWithPassword, signInWithOtp, verifyOtp, signInWithOAuth,
   cancelOAuthFlow, signOut, getSession, getUser, refreshSession,
   resetPasswordForEmail, updateUser, onAuthStateChange, isAuthError,
-} from "@corpora/plugin-supabase-auth";
+} from "@exegia/plugin-supabase-auth";
 
 // Email/password
 await signUp({ email, password });                    // -> { status, session? }
@@ -165,7 +165,7 @@ refresh token.
 ```bash
 cargo test          # unit + wiremock contract tests
 pnpm install && pnpm -r build
-pnpm --filter @corpora/auth-ui test   # UI kit tests (incl. accessibility)
+pnpm --filter @exegia/auth-ui test   # UI kit tests (incl. accessibility)
 pnpm test:e2e       # lifecycle E2E — needs SUPABASE_E2E_URL / SUPABASE_E2E_KEY
 ```
 

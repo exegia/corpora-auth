@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
-vi.mock("@corpora/plugin-supabase-auth", () => import("@/test/mocks"));
+vi.mock("@exegia/plugin-supabase-auth", () => import("@/test/mocks"));
 
 import { OtpForm } from "@/blocks/otp-form";
 import * as bindings from "@/test/mocks";

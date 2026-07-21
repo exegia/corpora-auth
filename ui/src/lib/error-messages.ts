@@ -1,4 +1,4 @@
-import type { AuthError, AuthErrorKind } from "@corpora/plugin-supabase-auth";
+import type { AuthError, AuthErrorKind } from "@exegia/plugin-supabase-auth";
 
 /** Per-block override map: `{ invalidCredentials: "Custom message" }`. */
 export type ErrorMessageOverrides = Partial<Record<AuthErrorKind, string>>;

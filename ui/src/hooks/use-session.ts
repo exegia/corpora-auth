@@ -4,7 +4,7 @@ import {
   onAuthStateChange,
   type Session,
   type User,
-} from "@corpora/plugin-supabase-auth";
+} from "@exegia/plugin-supabase-auth";
 
 export type SessionStatus = "loading" | "signedIn" | "signedOut";
 

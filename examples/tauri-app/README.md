@@ -1,7 +1,7 @@
 # Supabase Auth example app
 
 Runnable Tauri v2 app demonstrating `tauri-plugin-supabase-auth` and the
-`@corpora/auth-ui` blocks working together.
+`@exegia/auth-ui` blocks working together.
 
 ## Prerequisites
 

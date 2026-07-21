@@ -1,10 +1,10 @@
 /**
- * vi.mock-able fake of `@corpora/plugin-supabase-auth`.
+ * vi.mock-able fake of `@exegia/plugin-supabase-auth`.
  *
  * Usage in a test file:
  *
  * ```ts
- * vi.mock("@corpora/plugin-supabase-auth", () => import("@/test/mocks"));
+ * vi.mock("@exegia/plugin-supabase-auth", () => import("@/test/mocks"));
  * import * as bindings from "@/test/mocks";
  * beforeEach(() => bindings.resetAuthMocks());
  * ```
@@ -19,9 +19,9 @@ import type {
   Session,
   SignUpResult,
   User,
-} from "@corpora/plugin-supabase-auth";
+} from "@exegia/plugin-supabase-auth";
 
-export type * from "@corpora/plugin-supabase-auth";
+export type * from "@exegia/plugin-supabase-auth";
 
 const ERROR_KINDS = new Set([
   "invalidCredentials",

@@ -33,7 +33,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
-      - run: pnpm --filter @corpora/auth-ui test
+      - run: pnpm --filter @exegia/auth-ui test
 
   # SC-006: full auth lifecycle against a real local Supabase stack.
   e2e:

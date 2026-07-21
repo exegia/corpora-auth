@@ -1,4 +1,4 @@
-# @corpora/auth-ui
+# @exegia/auth-ui
 
 Authentication UI kit for `tauri-plugin-supabase-auth`: coss ui–style React
 components and pre-assembled blocks (React 19 + Tailwind CSS v4). Every block
@@ -8,8 +8,8 @@ any network call, and is keyboard- and screen-reader-operable.
 ```ts
 import { SignInForm, SignUpForm, ForgotPasswordForm,
          UpdatePasswordForm, OtpForm, SocialButtons,
-         useSession, useAuth } from "@corpora/auth-ui";
-import "@corpora/auth-ui/styles.css";
+         useSession, useAuth } from "@exegia/auth-ui";
+import "@exegia/auth-ui/styles.css";
 ```
 
 Requires the plugin to be installed and `supabase-auth:default` granted in
@@ -68,5 +68,5 @@ the browser round-trip is in flight. Props: `providers: Provider[]`,
 ## Tests
 
 ```bash
-pnpm --filter @corpora/auth-ui test   # Testing Library + vitest-axe
+pnpm --filter @exegia/auth-ui test   # Testing Library + vitest-axe
 ```

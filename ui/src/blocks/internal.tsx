@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { AuthError } from "@corpora/plugin-supabase-auth";
+import type { AuthError } from "@exegia/plugin-supabase-auth";
 import { Alert, AlertAction, AlertDescription } from "@/components/ui/alert";
 import {
   Field,
