@@ -39,3 +39,26 @@ the app aborts with a message naming the field.
    already granted in `src-tauri/capabilities/default.json`.
 4. **Passwordless / OAuth** — OTP tab; social buttons (configure a provider
    with redirect `http://127.0.0.1:43823/callback` first).
+5. **Onboarding** — the "Create account" tab runs `<OnboardingFlow />`:
+   credentials → profile step(s) → home screen. Check "Use custom
+   onboarding steps" to try a two-step config (required role select +
+   optional newsletter checkbox). Quit at a profile step and relaunch to
+   watch the flow resume exactly where you left off (progress lives in
+   `user_metadata.corpora_onboarding`).
+
+## Email confirmation walkthrough
+
+By default the local stack signs users in immediately. To exercise the
+onboarding waiting state, enable confirmations in `supabase/config.toml`:
+
+```toml
+[auth.email]
+enable_confirmations = true
+```
+
+and add `{{ .Token }}` to the "Confirm signup" email template so the
+6-digit code can be redeemed in-app. Then `supabase stop && supabase start`
+and register again: the flow shows the waiting step — grab the code from
+the local mailbox (<http://127.0.0.1:54324>) and enter it, or click the
+emailed link and watch the flow advance on its own (it silently retries
+sign-in every 5 s).

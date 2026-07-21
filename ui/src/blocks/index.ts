@@ -14,3 +14,7 @@ export {
   providerLabel,
   type SocialButtonsProps,
 } from "./social-buttons";
+export {
+  OnboardingFlow,
+  type OnboardingFlowProps,
+} from "./onboarding-flow";

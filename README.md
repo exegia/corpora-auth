@@ -185,6 +185,7 @@ Every rejection is a structured `{ kind, message, retryAfterSecs? }` — check w
 | `<ForgotPasswordForm />` | Request reset → redeem emailed recovery code **in-app** → hand off to password update |
 | `<UpdatePasswordForm />` | Signed-in password change |
 | `<SocialButtons />` | Per-provider buttons with in-flight/cancel handling |
+| `<OnboardingFlow />` | Multi-step sign-up: credentials → confirmation waiting state → declared profile steps, resumable via `user_metadata` (needs `allow-update-user`) |
 
 All blocks: zod validation before any network call, loading/success/error states, keyboard- and screen-reader-operable (axe-tested), user-facing error messages overridable per block via `errorMessages`.
 
@@ -230,7 +231,7 @@ The example wires every block to the local stack out of the box — see [example
 ## 🗺️ Roadmap
 
 - [ ] **Account linking** — attach OAuth identities to an existing email account
-- [ ] **Sign-up onboarding steps** — collect profile info (`user_metadata`) in a multi-step block
+- [x] **Sign-up onboarding steps** — collect profile info (`user_metadata`) in a multi-step block (`<OnboardingFlow />`)
 - [ ] **MFA / TOTP** — enrollment + challenge blocks once the underlying flows stabilize
 - [ ] **Deep-link OAuth** — custom-scheme return path as an alternative to loopback
 - [ ] **crates.io release** — currently consumed as a git dependency
