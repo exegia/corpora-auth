@@ -21,8 +21,14 @@ jobs:
           registry-url: https://npm.pkg.github.com
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @exegia/plugin-supabase-auth build
+      - run: pnpm --filter @exegia/auth-ui build
       - name: Publish @exegia/plugin-supabase-auth
         working-directory: guest-js
-        run: npm publish
+        run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish @exegia/auth-ui
+        working-directory: ui
+        run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
