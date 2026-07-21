@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ForgotPasswordForm,
+  LinkedAccounts,
   OnboardingFlow,
   OtpForm,
   SignInForm,
@@ -140,6 +141,12 @@ export default function App() {
             ask Rust
           </button>
         </p>
+        <section className="space-y-2" aria-labelledby="linked-accounts-heading">
+          <h2 className="font-semibold" id="linked-accounts-heading">
+            Linked accounts
+          </h2>
+          <LinkedAccounts providers={["github", "google"]} />
+        </section>
         <div className="flex gap-2">
           <button
             className="rounded border px-3 py-1"

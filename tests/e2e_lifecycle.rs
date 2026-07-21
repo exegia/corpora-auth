@@ -72,6 +72,12 @@ async fn full_lifecycle_against_live_stack() {
     let restored = core2.session().await.expect("restart-restore (SC-004)");
     assert_eq!(restored.user.email.as_deref(), Some(email.as_str()));
 
+    // Identity management smoke (feature 003): an email registration
+    // carries exactly one identity, provider "email".
+    let identities = core2.get_identities().await.unwrap();
+    assert_eq!(identities.len(), 1, "email signup yields one identity");
+    assert_eq!(identities[0].provider, "email");
+
     // Refresh works against the live stack.
     let refreshed = core2.refresh().await.unwrap();
     assert_ne!(refreshed.access_token, session.access_token);

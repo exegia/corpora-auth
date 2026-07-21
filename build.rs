@@ -11,6 +11,9 @@ const COMMANDS: &[&str] = &[
     "refresh_session",
     "reset_password_for_email",
     "update_user",
+    "get_identities",
+    "link_identity",
+    "unlink_identity",
 ];
 
 fn main() {

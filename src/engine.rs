@@ -13,7 +13,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::error::{classify_auth_text, Error, ErrorKind, Result};
-use crate::models::{Session, SignUpResult, SignUpStatus, User};
+use crate::models::{Identity, Session, SignUpResult, SignUpStatus, User};
 
 pub struct AuthEngine {
     client: supabase::Client,
@@ -194,6 +194,53 @@ impl AuthEngine {
         self.adopt(&session).await;
         Ok(session)
     }
+
+    // -- identity management (feature 003; crate has no support — REST only) --
+
+    /// Reads the user's identities off `GET /auth/v1/user` (there is no
+    /// dedicated list endpoint). Returns the refreshed user too.
+    pub async fn get_identities(&self, access_token: &str) -> Result<(User, Vec<Identity>)> {
+        self.rest
+            .get_user_identities(access_token)
+            .await
+            .map_err(manual_linking_hint)
+    }
+
+    /// Fetches the provider authorize URL for linking an identity to the
+    /// current (bearer-authenticated) account.
+    pub async fn link_authorize_url(
+        &self,
+        access_token: &str,
+        provider: &str,
+        scopes: Option<&[String]>,
+        redirect_to: &str,
+        code_challenge: &str,
+    ) -> Result<String> {
+        self.rest
+            .link_authorize_url(access_token, provider, scopes, redirect_to, code_challenge)
+            .await
+            .map_err(manual_linking_hint)
+    }
+
+    pub async fn unlink_identity(&self, access_token: &str, identity_id: &str) -> Result<()> {
+        self.rest
+            .unlink_identity(access_token, identity_id)
+            .await
+            .map_err(manual_linking_hint)
+    }
+}
+
+/// Makes the `manual_linking_disabled` failure actionable (FR edge case).
+fn manual_linking_hint(mut e: Error) -> Error {
+    if e.kind == ErrorKind::Configuration && e.message.contains("manual_linking_disabled") {
+        e.message.push_str(
+            " — enable manual identity linking on the project: \
+             [auth] enable_manual_linking = true in supabase/config.toml (local), \
+             GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true (self-hosted), \
+             or the Authentication settings toggle in the dashboard",
+        );
+    }
+    e
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +278,61 @@ struct WireUser {
     user_metadata: serde_json::Value,
     #[serde(default)]
     app_metadata: serde_json::Value,
+}
+
+#[derive(Deserialize)]
+struct WireIdentity {
+    identity_id: String,
+    id: String,
+    provider: String,
+    email: Option<String>,
+    created_at: Option<DateTime<Utc>>,
+    last_sign_in_at: Option<DateTime<Utc>>,
+}
+
+impl WireIdentity {
+    fn into_identity(self) -> Identity {
+        Identity {
+            identity_id: self.identity_id,
+            provider_subject: self.id,
+            provider: self.provider,
+            email: self.email,
+            created_at: self.created_at,
+            last_sign_in_at: self.last_sign_in_at,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct WireUserWithIdentities {
+    #[serde(flatten)]
+    user: WireUser,
+    #[serde(default)]
+    identities: Vec<WireIdentity>,
+}
+
+impl WireUserWithIdentities {
+    fn split(self) -> (User, Vec<Identity>) {
+        let identities = self
+            .identities
+            .into_iter()
+            .map(WireIdentity::into_identity)
+            .collect();
+        let u = self.user;
+        let user = User {
+            id: u.id,
+            email: u.email,
+            phone: u.phone,
+            email_confirmed_at: u.email_confirmed_at,
+            phone_confirmed_at: u.phone_confirmed_at,
+            last_sign_in_at: u.last_sign_in_at,
+            created_at: u.created_at,
+            updated_at: u.updated_at,
+            user_metadata: u.user_metadata,
+            app_metadata: u.app_metadata,
+        };
+        (user, identities)
+    }
 }
 
 impl WireSession {
@@ -372,6 +474,77 @@ impl RestClient {
             user_metadata: wire.user_metadata,
             app_metadata: wire.app_metadata,
         })
+    }
+
+    async fn get_user_identities(&self, access_token: &str) -> Result<(User, Vec<Identity>)> {
+        let resp = self
+            .http
+            .get(format!("{}/auth/v1/user", self.base))
+            .header("apikey", &self.key)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .send()
+            .await?;
+        let resp = Self::ok_or_classified(resp).await?;
+        let wire: WireUserWithIdentities = resp
+            .json()
+            .await
+            .map_err(|e| Error::unknown(format!("unexpected user response: {e}")))?;
+        Ok(wire.split())
+    }
+
+    async fn link_authorize_url(
+        &self,
+        access_token: &str,
+        provider: &str,
+        scopes: Option<&[String]>,
+        redirect_to: &str,
+        code_challenge: &str,
+    ) -> Result<String> {
+        let mut url = url::Url::parse(&format!("{}/auth/v1/user/identities/authorize", self.base))
+            .expect("base url validated at startup");
+        {
+            let mut q = url.query_pairs_mut();
+            q.append_pair("provider", provider);
+            q.append_pair("redirect_to", redirect_to);
+            q.append_pair("code_challenge", code_challenge);
+            q.append_pair("code_challenge_method", "s256");
+            q.append_pair("skip_http_redirect", "true");
+            if let Some(scopes) = scopes.filter(|s| !s.is_empty()) {
+                q.append_pair("scopes", &scopes.join(" "));
+            }
+        }
+        let resp = self
+            .http
+            .get(url)
+            .header("apikey", &self.key)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .send()
+            .await?;
+        let resp = Self::ok_or_classified(resp).await?;
+        #[derive(Deserialize)]
+        struct AuthorizeResponse {
+            url: String,
+        }
+        let body: AuthorizeResponse = resp
+            .json()
+            .await
+            .map_err(|e| Error::unknown(format!("unexpected authorize response: {e}")))?;
+        Ok(body.url)
+    }
+
+    async fn unlink_identity(&self, access_token: &str, identity_id: &str) -> Result<()> {
+        let resp = self
+            .http
+            .delete(format!(
+                "{}/auth/v1/user/identities/{identity_id}",
+                self.base
+            ))
+            .header("apikey", &self.key)
+            .header("Authorization", format!("Bearer {access_token}"))
+            .send()
+            .await?;
+        Self::ok_or_classified(resp).await?;
+        Ok(())
     }
 
     async fn exchange_pkce(&self, code: &str, verifier: &str) -> Result<Session> {

@@ -21,7 +21,8 @@ use crate::config::ValidatedConfig;
 use crate::engine::{AuthEngine, OtpKind, OtpTarget};
 use crate::error::{Error, ErrorKind, Result};
 use crate::models::{
-    AuthChangeEvent, AuthChangePayload, SanitizedSession, Session, SignUpResult, SignUpStatus, User,
+    AuthChangeEvent, AuthChangePayload, Identity, SanitizedSession, Session, SignUpResult,
+    SignUpStatus, User,
 };
 use crate::persistence::SessionStore;
 
@@ -52,6 +53,9 @@ pub struct AuthCore {
     next_listener_id: AtomicU64,
     /// Wakes the background refresh task after every state transition.
     pub(crate) refresh_notify: Notify,
+    /// In-flight identity-link round-trip (feature 003). Kept OUTSIDE the
+    /// auth state machine: the user stays fully SignedIn while linking.
+    link_cancel: std::sync::Mutex<Option<Arc<Notify>>>,
 }
 
 pub struct ListenerHandle(pub u64);
@@ -66,6 +70,7 @@ impl AuthCore {
             listeners: std::sync::Mutex::new(Vec::new()),
             next_listener_id: AtomicU64::new(1),
             refresh_notify: Notify::new(),
+            link_cancel: std::sync::Mutex::new(None),
         }
     }
 
@@ -317,6 +322,95 @@ impl AuthCore {
         Ok(user)
     }
 
+    // -- identity management (feature 003) -----------------------------------
+
+    /// Lists the account's identities from the server and refreshes the
+    /// in-state user (FR-002). No caching — the server is the source of truth.
+    pub async fn get_identities(&self) -> Result<Vec<Identity>> {
+        let mut state = self.state.lock().await;
+        let AuthState::SignedIn(current) = &*state else {
+            return Err(Error::session_expired(
+                "listing identities requires a signed-in session",
+            ));
+        };
+        let token = current.access_token.clone();
+        let (user, identities) = with_timeout(self.engine.get_identities(&token)).await?;
+        if let AuthState::SignedIn(s) = &mut *state {
+            s.user = user;
+            self.store.save(s);
+        }
+        Ok(identities)
+    }
+
+    /// Starts a link round-trip: requires SignedIn (the state machine is NOT
+    /// entered — the user stays signed in throughout, US1-AS5) and only one
+    /// flow at a time. Returns (access_token, cancel handle).
+    pub async fn begin_link(&self) -> Result<(String, Arc<Notify>)> {
+        let state = self.state.lock().await;
+        let AuthState::SignedIn(s) = &*state else {
+            return Err(Error::session_expired(
+                "linking an identity requires a signed-in session",
+            ));
+        };
+        let mut link = self.link_cancel.lock().unwrap();
+        if link.is_some() {
+            return Err(Error::oauth_interrupted(
+                "an identity-link flow is already in progress; cancel it first",
+            ));
+        }
+        let cancel = Arc::new(Notify::new());
+        *link = Some(cancel.clone());
+        Ok((s.access_token.clone(), cancel))
+    }
+
+    /// Completes a link flow: adopts the same-user session returned by the
+    /// PKCE exchange and announces the identity change (FR-008). Rejects if
+    /// the flow was cancelled meanwhile.
+    pub async fn complete_link(&self, session: Session) -> Result<Session> {
+        let mut state = self.state.lock().await;
+        if self.link_cancel.lock().unwrap().take().is_none() {
+            return Err(Error::oauth_interrupted("identity-link flow was cancelled"));
+        }
+        if !matches!(&*state, AuthState::SignedIn(_)) {
+            return Err(Error::session_expired("session ended during the link flow"));
+        }
+        self.store.save(&session);
+        self.emit(AuthChangeEvent::IdentitiesChanged, Some(&session));
+        *state = AuthState::SignedIn(session.clone());
+        drop(state);
+        self.refresh_notify.notify_waiters();
+        Ok(session)
+    }
+
+    /// Aborts an in-flight link (cancel, timeout, failure). The signed-in
+    /// session is untouched (FR-006).
+    pub async fn abort_link(&self) {
+        if let Some(cancel) = self.link_cancel.lock().unwrap().take() {
+            cancel.notify_waiters();
+        }
+    }
+
+    /// Unlinks by identity row id. The current session survives every
+    /// outcome (US3-AS4); refusals surface as `lastSignInMethod`.
+    pub async fn unlink_identity(&self, identity_id: &str) -> Result<Vec<Identity>> {
+        let mut state = self.state.lock().await;
+        let AuthState::SignedIn(current) = &*state else {
+            return Err(Error::session_expired(
+                "unlinking requires a signed-in session",
+            ));
+        };
+        let token = current.access_token.clone();
+        with_timeout(self.engine.unlink_identity(&token, identity_id)).await?;
+        let (user, identities) = with_timeout(self.engine.get_identities(&token)).await?;
+        if let AuthState::SignedIn(s) = &mut *state {
+            s.user = user;
+            self.store.save(s);
+            let session = s.clone();
+            self.emit(AuthChangeEvent::IdentitiesChanged, Some(&session));
+        }
+        Ok(identities)
+    }
+
     // -- OAuth state hooks (flow logic lives in oauth.rs) --------------------
 
     /// Enters `OAuthInFlight`; returns the cancel handle the flow must watch.
@@ -350,7 +444,9 @@ impl AuthCore {
     }
 
     /// Aborts an in-flight flow (explicit cancel, timeout, or failure).
+    /// Covers both sign-in round-trips and identity-link round-trips.
     pub async fn abort_oauth(&self) {
+        self.abort_link().await;
         let mut state = self.state.lock().await;
         if let AuthState::OAuthInFlight { cancel, .. } = &*state {
             cancel.notify_waiters();

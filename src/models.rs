@@ -130,6 +130,23 @@ pub enum AuthChangeEvent {
     TokenRefreshed,
     #[serde(rename = "PASSWORD_RECOVERY")]
     PasswordRecovery,
+    #[serde(rename = "IDENTITIES_CHANGED")]
+    IdentitiesChanged,
+}
+
+/// One sign-in method attached to the account (feature 003). Mapped from the
+/// GoTrue identity object; note GoTrue's confusing wire naming — its `id` is
+/// the provider-specific subject, while `identity_id` is the row key used for
+/// unlinking. The raw `identity_data` claims blob is deliberately not exposed.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Identity {
+    pub identity_id: String,
+    pub provider_subject: String,
+    pub provider: String,
+    pub email: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub last_sign_in_at: Option<DateTime<Utc>>,
 }
 
 /// Payload of the `supabase-auth://auth-state-changed` event.

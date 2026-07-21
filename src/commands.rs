@@ -6,7 +6,7 @@ use tauri::{AppHandle, Runtime, State};
 use crate::desktop::SupabaseAuth;
 use crate::engine::{OtpKind, OtpTarget};
 use crate::error::{Error, Result};
-use crate::models::{SanitizedSession, SignUpResult, User};
+use crate::models::{Identity, SanitizedSession, SignUpResult, User};
 
 fn otp_target(email: Option<String>, phone: Option<String>) -> Result<OtpTarget> {
     match (email, phone) {
@@ -158,4 +158,31 @@ pub async fn update_user<R: Runtime>(
     data: Option<serde_json::Value>,
 ) -> Result<User> {
     state.core().update_user(email, password, data).await
+}
+
+#[tauri::command]
+pub async fn get_identities<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+) -> Result<Vec<Identity>> {
+    state.core().get_identities().await
+}
+
+#[tauri::command]
+pub async fn link_identity<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+    provider: String,
+    scopes: Option<Vec<String>>,
+) -> Result<Vec<Identity>> {
+    state.link_identity(&provider, scopes).await
+}
+
+#[tauri::command]
+pub async fn unlink_identity<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, SupabaseAuth<R>>,
+    identity_id: String,
+) -> Result<Vec<Identity>> {
+    state.core().unlink_identity(&identity_id).await
 }

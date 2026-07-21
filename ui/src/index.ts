@@ -6,6 +6,10 @@ export * from "./hooks/use-auth";
 export * from "./hooks/use-session";
 export * from "./hooks/use-onboarding";
 export * from "./hooks/use-onboarding-flow";
+export * from "./hooks/use-identities";
+
+// Convenience re-export from the bindings package
+export type { Identity } from "@exegia/plugin-supabase-auth";
 
 // Lib
 export * from "./lib/error-messages";
