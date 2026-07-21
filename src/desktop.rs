@@ -111,11 +111,18 @@ impl<R: Runtime> SupabaseAuth<R> {
         scopes: Option<Vec<String>>,
     ) -> Result<Session> {
         let cancel = self.core.begin_oauth(provider).await?;
-        let result = crate::oauth::run_flow(&self.core, provider, scopes, cancel, |url| {
-            open::that_detached(&url).map_err(|e| {
-                crate::error::Error::oauth_interrupted(format!("failed to open browser: {e}"))
-            })
-        })
+        let result = crate::oauth::run_flow(
+            &self.core,
+            provider,
+            scopes,
+            crate::oauth::FlowKind::SignIn,
+            cancel,
+            |url| {
+                open::that_detached(&url).map_err(|e| {
+                    crate::error::Error::oauth_interrupted(format!("failed to open browser: {e}"))
+                })
+            },
+        )
         .await;
         match result {
             Ok(session) => self.core.complete_oauth(session).await,
@@ -128,5 +135,51 @@ impl<R: Runtime> SupabaseAuth<R> {
 
     pub async fn cancel_oauth_flow(&self) {
         self.core.abort_oauth().await;
+    }
+
+    // -- identity management (feature 003) -----------------------------------
+
+    pub async fn identities(&self) -> Result<Vec<crate::models::Identity>> {
+        self.core.get_identities().await
+    }
+
+    /// Links a provider identity to the current account: authenticated
+    /// authorize → system browser → loopback → PKCE exchange (same user).
+    /// Returns the refreshed identity list.
+    pub async fn link_identity(
+        &self,
+        provider: &str,
+        scopes: Option<Vec<String>>,
+    ) -> Result<Vec<crate::models::Identity>> {
+        let (access_token, cancel) = self.core.begin_link().await?;
+        let result = crate::oauth::run_flow(
+            &self.core,
+            provider,
+            scopes,
+            crate::oauth::FlowKind::Link { access_token },
+            cancel,
+            |url| {
+                open::that_detached(&url).map_err(|e| {
+                    crate::error::Error::oauth_interrupted(format!("failed to open browser: {e}"))
+                })
+            },
+        )
+        .await;
+        match result {
+            Ok(session) => {
+                self.core.complete_link(session).await?;
+                self.core.get_identities().await
+            }
+            Err(e) => {
+                // The account and current session are untouched (FR-006);
+                // only the transient flow state is cleared.
+                self.core.abort_link().await;
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn unlink_identity(&self, identity_id: &str) -> Result<Vec<crate::models::Identity>> {
+        self.core.unlink_identity(identity_id).await
     }
 }

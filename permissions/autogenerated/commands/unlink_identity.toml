@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-unlink-identity"
+description = "Enables the unlink_identity command without any pre-configured scope."
+commands.allow = ["unlink_identity"]
+
+[[permission]]
+identifier = "deny-unlink-identity"
+description = "Denies the unlink_identity command without any pre-configured scope."
+commands.deny = ["unlink_identity"]

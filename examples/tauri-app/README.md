@@ -45,6 +45,22 @@ the app aborts with a message naming the field.
    optional newsletter checkbox). Quit at a profile step and relaunch to
    watch the flow resume exactly where you left off (progress lives in
    `user_metadata.corpora_onboarding`).
+6. **Account linking** — sign in with email/password, then use the
+   "Linked accounts" section on the home screen (`<LinkedAccounts />`):
+   connect GitHub or Google (system-browser round-trip; configure the
+   provider with redirect `http://127.0.0.1:43823/callback` first), watch
+   the identity appear in the list, then disconnect it again. With a single
+   identity left the disconnect button is disabled with an explanation —
+   the last sign-in method can never be removed. Requires manual linking
+   enabled in `supabase/config.toml`:
+
+   ```toml
+   [auth]
+   enable_manual_linking = true
+   ```
+
+   then `supabase stop && supabase start`. (The three identity permissions
+   are already granted in `src-tauri/capabilities/default.json`.)
 
 ## Email confirmation walkthrough
 

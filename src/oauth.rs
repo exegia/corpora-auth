@@ -37,36 +37,58 @@ pub fn generate_pkce() -> Pkce {
     }
 }
 
+/// Which round-trip this is: a fresh sign-in, or linking an identity to the
+/// current account (feature 003) — the latter fetches its authorize URL from
+/// GoTrue with the session bearer token.
+pub enum FlowKind {
+    SignIn,
+    Link { access_token: String },
+}
+
 /// Runs the complete OAuth round-trip. `open_browser` is injected so tests
 /// can drive the flow without a real browser.
+///
+/// CSRF note: no custom `state` parameter is used — GoTrue does not forward
+/// unknown `/authorize` params to the loopback redirect, and the PKCE
+/// verifier already binds the captured code to this flow (a foreign code
+/// fails the exchange).
 pub async fn run_flow(
     core: &AuthCore,
     provider: &str,
     scopes: Option<Vec<String>>,
+    kind: FlowKind,
     cancel: Arc<Notify>,
     open_browser: impl FnOnce(String) -> Result<()>,
 ) -> Result<Session> {
     let pkce = generate_pkce();
-    let expected_state = random_state();
 
     // One-shot loopback server on the first available configured port.
     let (listener, port) = bind_loopback(&core.config.callback_ports).await?;
     let redirect = format!("http://127.0.0.1:{port}/callback");
 
-    let mut url = url::Url::parse(&core.engine.authorize_url(
-        provider,
-        scopes.as_deref(),
-        &redirect,
-        &pkce.challenge,
-    ))
-    .map_err(|e| Error::unknown(format!("authorize url: {e}")))?;
-    url.query_pairs_mut().append_pair("state", &expected_state);
+    let url = match &kind {
+        FlowKind::SignIn => {
+            core.engine
+                .authorize_url(provider, scopes.as_deref(), &redirect, &pkce.challenge)
+        }
+        FlowKind::Link { access_token } => {
+            core.engine
+                .link_authorize_url(
+                    access_token,
+                    provider,
+                    scopes.as_deref(),
+                    &redirect,
+                    &pkce.challenge,
+                )
+                .await?
+        }
+    };
 
-    open_browser(url.to_string())?;
+    open_browser(url)?;
 
     let timeout = std::time::Duration::from_secs(core.config.flow_timeout_secs as u64);
     let code = tokio::select! {
-        r = capture_code(listener, &expected_state) => r?,
+        r = capture_code(listener) => r?,
         _ = cancel.notified() => {
             return Err(Error::oauth_interrupted("OAuth flow cancelled"));
         }
@@ -79,12 +101,6 @@ pub async fn run_flow(
     };
 
     core.engine.exchange_pkce_code(&code, &pkce.verifier).await
-}
-
-fn random_state() -> String {
-    let mut bytes = [0u8; 16];
-    rand::thread_rng().fill_bytes(&mut bytes);
-    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes)
 }
 
 async fn bind_loopback(ports: &[u16]) -> Result<(TcpListener, u16)> {
@@ -100,8 +116,8 @@ async fn bind_loopback(ports: &[u16]) -> Result<(TcpListener, u16)> {
 }
 
 /// Accepts connections until one carries a valid callback. Rejects unexpected
-/// paths and state mismatches rather than consuming them as the one-shot.
-async fn capture_code(listener: TcpListener, expected_state: &str) -> Result<String> {
+/// paths rather than consuming them as the one-shot.
+async fn capture_code(listener: TcpListener) -> Result<String> {
     loop {
         let (mut stream, _) = listener
             .accept()
@@ -131,12 +147,10 @@ async fn capture_code(listener: TcpListener, expected_state: &str) -> Result<Str
         }
 
         let mut code = None;
-        let mut state = None;
         let mut provider_error = None;
         for (k, v) in url.query_pairs() {
             match k.as_ref() {
                 "code" => code = Some(v.into_owned()),
-                "state" => state = Some(v.into_owned()),
                 "error" | "error_description" => provider_error = Some(v.into_owned()),
                 _ => {}
             }
@@ -152,11 +166,6 @@ async fn capture_code(listener: TcpListener, expected_state: &str) -> Result<Str
             return Err(Error::oauth_interrupted(format!(
                 "provider returned an error: {err}"
             )));
-        }
-        if state.as_deref() != Some(expected_state) {
-            tracing::warn!("oauth callback state mismatch; ignoring request");
-            respond(&mut stream, 400, "State mismatch").await;
-            continue;
         }
         let Some(code) = code else {
             respond(&mut stream, 400, "Missing code").await;

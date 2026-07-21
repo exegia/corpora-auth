@@ -18,3 +18,7 @@ export {
   OnboardingFlow,
   type OnboardingFlowProps,
 } from "./onboarding-flow";
+export {
+  LinkedAccounts,
+  type LinkedAccountsProps,
+} from "./linked-accounts";

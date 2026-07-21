@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the cancel_oauth_flow command without any pre-configured scope."
         },
         {
+          "description": "Enables the get_identities command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-identities",
+          "markdownDescription": "Enables the get_identities command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_identities command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-identities",
+          "markdownDescription": "Denies the get_identities command without any pre-configured scope."
+        },
+        {
           "description": "Enables the get_session command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-session",
@@ -329,6 +341,18 @@
           "type": "string",
           "const": "deny-get-user",
           "markdownDescription": "Denies the get_user command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the link_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-link-identity",
+          "markdownDescription": "Enables the link_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the link_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-link-identity",
+          "markdownDescription": "Denies the link_identity command without any pre-configured scope."
         },
         {
           "description": "Enables the refresh_session command without any pre-configured scope.",
@@ -413,6 +437,18 @@
           "type": "string",
           "const": "deny-start-oauth-flow",
           "markdownDescription": "Denies the start_oauth_flow command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the unlink_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-unlink-identity",
+          "markdownDescription": "Enables the unlink_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the unlink_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-unlink-identity",
+          "markdownDescription": "Denies the unlink_identity command without any pre-configured scope."
         },
         {
           "description": "Enables the update_user command without any pre-configured scope.",

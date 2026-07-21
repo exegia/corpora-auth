@@ -103,6 +103,34 @@ pub fn gotrue_session(access_token: &str, refresh_token: &str, expires_in_secs: 
     })
 }
 
+/// GoTrue identity object as it appears on `user.identities` (snake_case).
+/// Note: `id` is the provider subject; `identity_id` is the row UUID.
+pub fn gotrue_identity(provider: &str, identity_id: &str) -> Value {
+    json!({
+        "identity_id": identity_id,
+        "id": format!("{provider}-subject-1"),
+        "user_id": "11111111-2222-3333-4444-555555555555",
+        "provider": provider,
+        "identity_data": { "sub": format!("{provider}-subject-1"), "email": "user@example.com" },
+        "email": "user@example.com",
+        "created_at": "2026-07-20T10:00:00Z",
+        "updated_at": "2026-07-20T10:00:00Z",
+        "last_sign_in_at": "2026-07-20T10:00:00Z"
+    })
+}
+
+/// `GET /auth/v1/user` response body carrying the given identities.
+pub fn gotrue_user_with_identities(identities: &[Value]) -> Value {
+    let mut user = gotrue_user();
+    user["identities"] = json!(identities);
+    user
+}
+
+/// `GET /auth/v1/user/identities/authorize` JSON response (skip_http_redirect).
+pub fn gotrue_authorize_response(provider_url: &str) -> Value {
+    json!({ "url": provider_url })
+}
+
 /// Plugin-format (camelCase) session JSON as the stores persist it.
 pub fn stored_session_json(access_token: &str, expires_in_secs: i64) -> String {
     json!({
