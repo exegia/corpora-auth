@@ -1,0 +1,76 @@
+name: Release
+
+# One-click semver release: bumps versions in lockstep, tags, publishes both
+# npm packages to GitHub Packages, and creates a GitHub Release.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Semver bump"
+        required: true
+        type: choice
+        options: [patch, minor, major]
+        default: minor
+
+concurrency: release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push version commit + tag, create the release
+      packages: write   # publish to GitHub Packages
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+      - run: pnpm install --frozen-lockfile
+
+      # Gate: never release red.
+      - run: pnpm --filter @exegia/auth-ui test
+      - run: pnpm -r build
+
+      - name: Bump versions in lockstep
+        id: bump
+        run: |
+          pnpm --filter @exegia/plugin-supabase-auth exec npm version ${{ inputs.bump }} --no-git-tag-version
+          pnpm --filter @exegia/auth-ui exec npm version ${{ inputs.bump }} --no-git-tag-version
+          VERSION=$(node -p "require('./guest-js/package.json').version")
+          # Keep the crate version aligned (first `version =` in [package]).
+          python3 -c "import re,sys; p='Cargo.toml'; s=open(p).read(); open(p,'w').write(re.sub(r'^version = \".*\"$', 'version = \"'+sys.argv[1]+'\"', s, count=1, flags=re.M))" "$VERSION"
+          cargo update --workspace --quiet || true   # refresh Cargo.lock version entry
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(release): v${{ steps.bump.outputs.version }}"
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push origin main --follow-tags
+
+      - name: Publish @exegia/plugin-supabase-auth
+        working-directory: guest-js
+        run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish @exegia/auth-ui
+        working-directory: ui
+        run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.bump.outputs.version }}" \
+            --title "v${{ steps.bump.outputs.version }}" \
+            --generate-notes
