@@ -13,7 +13,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup index.ts --format esm,cjs --dts --clean",
     "test": "echo \"no tests in guest-js (covered by ui + rust suites)\""
@@ -24,5 +26,6 @@
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.5.0"
-  }
+  },
+  "license": "MIT OR Apache-2.0"
 }
