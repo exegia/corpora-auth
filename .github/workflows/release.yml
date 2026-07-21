@@ -32,9 +32,10 @@ jobs:
           registry-url: https://npm.pkg.github.com
       - run: pnpm install --frozen-lockfile
 
-      # Gate: never release red.
-      - run: pnpm --filter @exegia/auth-ui test
+      # Gate: never release red. Build first — the UI tests need the
+      # bindings package's dist to exist for module resolution.
       - run: pnpm -r build
+      - run: pnpm --filter @exegia/auth-ui test
 
       - name: Bump versions in lockstep
         id: bump
