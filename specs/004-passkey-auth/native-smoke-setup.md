@@ -61,15 +61,15 @@ Apple Developer account creates that profile.
    `RP_ID` is permanent per project in practice (research R8), but this is a throwaway local
    project, so changing it here is cheap. Not changed on spec — it only matters once (1) is answered.
 
-## Discrepancy found
+## Discrepancy found — resolved in the docs
 
-quickstart.md:62 expects *"missing-entitlement build reports capability unusable with guidance"*.
-The implementation does not do that: [macos.rs:372](../../src/ceremony/macos.rs:372) keys
-`availability()` purely on the macOS 13+ version floor, so an unentitled build still reports
-`usable: true`. The entitlement failure surfaces later as `ASAuthorizationError.Failed` →
+quickstart.md:62 used to expect *"missing-entitlement build reports capability unusable with
+guidance"*. The implementation does not do that: [macos.rs:372](../../src/ceremony/macos.rs:372)
+keys `availability()` purely on the macOS 13+ version floor, so an unentitled build reports
+`usable: true`; the entitlement failure surfaces later as `ASAuthorizationError.Failed` →
 `Unsupported` carrying `SETUP_GUIDANCE` ([macos.rs:43](../../src/ceremony/macos.rs:43)).
 
-That behaviour is arguably correct — entitlement validity is not knowable without attempting a
-ceremony — but then the quickstart line should read *"missing-entitlement build fails the ceremony
-with setup guidance"*. **Either the checklist or the capability contract needs to move before T026
-can be honestly ticked.**
+The implementation is right — entitlement validity is not knowable without attempting a ceremony,
+and this is what research R6 already specified ("detected at runtime as a ceremony failure mapped to
+`PasskeyUnsupported` with guidance"). quickstart.md and data-model.md had drifted from R6 and have
+been corrected to match. No code change needed.

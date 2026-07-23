@@ -59,6 +59,6 @@ Against a stack with `[auth.passkey] enabled = false`: any passkey operation fai
 
 ## Native ceremony smoke checklist (Phase 2, manual, per release)
 
-- **macOS 13+** (signed app + Associated Domains + AASA served on the RP-ID domain): register via Touch ID; sign in via Touch ID; cancel each prompt once (expect status `cancelled`); missing-entitlement build reports capability unusable with guidance.
+- **macOS 13+** (signed app + Associated Domains + AASA served on the RP-ID domain): register via Touch ID; sign in via Touch ID; cancel each prompt once (expect status `cancelled`); a missing-entitlement build reports capability **usable** and fails at ceremony time with `passkeyUnsupported` carrying the setup guidance — entitlement validity is not knowable without attempting a ceremony, so `availability()` only checks the macOS 13+ floor (research R6/R7).
 - **Windows 10 19H1+**: register + sign in via Windows Hello; cancel each prompt once; verify asserted origin matches `RP_ORIGINS` (mismatch must surface as `passkeyVerificationFailed`).
 - **Linux**: capability reports unusable; no passkey UI anywhere (SC-004).

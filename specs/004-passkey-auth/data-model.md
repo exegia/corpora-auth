@@ -22,7 +22,9 @@ Derived, queryable, never persisted (research R7). Reflects device/ceremony read
 | Field | Type | Notes |
 |---|---|---|
 | `usable` | boolean | App-supplied provider availability, else built-in availability for this OS |
-| `reason` | string? | Present when unusable: `"unsupportedPlatform"` (no built-in for this OS, none supplied) or `"unavailable"` (provider exists but reports unusable, e.g. macOS entitlement missing) |
+| `reason` | string? | Present when unusable: `"unsupportedPlatform"` (no built-in for this OS, none supplied) or `"unavailable"` (provider exists but reports unusable, e.g. macOS below 13, Windows below 19H1) |
+
+Capability covers only what is knowable **without** running a ceremony. Setup that can fail solely at prompt time — notably a missing macOS Associated Domains entitlement or an unreachable AASA file — leaves `usable: true` and surfaces as a `passkeyUnsupported` ceremony failure with guidance (research R6).
 
 ## Ceremony types (Rust-side; opaque to apps using one-shot commands)
 
