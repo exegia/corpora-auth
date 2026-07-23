@@ -174,6 +174,11 @@ pub(crate) mod test_fixtures {
     use serde_json::json;
 
     /// Raw camelCase session JSON as persisted by the stores.
+    ///
+    /// Its only consumer is `file_store_writes_0600`, which is `#[cfg(unix)]`
+    /// (file-mode assertions do not apply on Windows) — so allow it to be dead
+    /// there, while keeping dead-code a hard error on unix.
+    #[cfg_attr(not(unix), allow(dead_code))]
     pub fn session_json(access_token: &str, expires_in_secs: i64) -> serde_json::Value {
         json!({
             "accessToken": access_token,

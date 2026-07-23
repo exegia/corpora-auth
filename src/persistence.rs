@@ -112,14 +112,20 @@ impl SessionStore for FileStore {
         if let Some(parent) = self.path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        if let Err(e) = std::fs::write(&self.path, &raw) {
-            tracing::warn!("failed to persist session file: {e}");
-            return;
-        }
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600));
+        // Structured as a match rather than an early return: the `return` was the
+        // function tail wherever the #[cfg(unix)] block below is compiled out.
+        match std::fs::write(&self.path, &raw) {
+            Err(e) => tracing::warn!("failed to persist session file: {e}"),
+            Ok(()) => {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ = std::fs::set_permissions(
+                        &self.path,
+                        std::fs::Permissions::from_mode(0o600),
+                    );
+                }
+            }
         }
     }
 
