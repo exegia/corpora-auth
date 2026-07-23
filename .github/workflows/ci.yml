@@ -22,6 +22,22 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
 
+  # src/ceremony/windows.rs is cfg(windows) — the ubuntu job never compiles it,
+  # and neither does a macOS dev host. Without this job the Windows built-in
+  # ceremony (feature 004 T025) reaches no compiler at all.
+  # Compilation + platform-agnostic tests only: webauthn.dll and the Windows
+  # Hello prompt still need the manual smoke checklist on real hardware.
+  rust-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
   web:
     runs-on: ubuntu-latest
     steps:
