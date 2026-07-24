@@ -133,8 +133,21 @@ Rust in `src/` + `tests/` (repo root = plugin crate), bindings in `guest-js/`, k
 - [X] T024 [P] macOS built-in in `src/ceremony/macos.rs` (cfg macos, research R6): `ASAuthorizationPlatformPublicKeyCredentialProvider` via `objc2-authentication-services` (macOS 13+ availability check → `Unavailable` below); map user cancel → `Cancelled`, missing Associated Domains entitlement / AASA failure → `Unsupported` with FR-015 guidance; serialize the credential to the standard WebAuthn JSON the server parses (research R1); `Cargo.toml` target-gated dependencies
 - [X] T025 [P] Windows built-in in `src/ceremony/windows.rs` (cfg windows, research R6): `webauthn.dll` `WebAuthNAuthenticatorMakeCredential`/`GetAssertion` via the `windows` crate (API-availability probe → `Unavailable` on pre-19H1); asserted origin from T023 config; cancel (HRESULT `NTE_USER_CANCELLED`) → `Cancelled`; `Cargo.toml` target-gated dependencies
 - [ ] T026 Register built-ins as the default provider tier in `src/lib.rs` (app-supplied still wins — T016 precedence tests must stay green); Linux resolves to none → capability `unsupportedPlatform` (SC-004); run the quickstart **native smoke checklist** manually on macOS + Windows hardware and record results in the PR description
+  > **DEFERRED past the PR #8 merge (2026-07-23) — release blocker, not a task.** Code half is
+  > done: `builtin_provider()` registers the native tiers, app-supplied still wins, Linux resolves
+  > to none, and both modules now compile in CI (`rust-macos` / `rust-windows`).
+  >
+  > The hardware half has **never run**. No passkey ceremony has executed an OS prompt on either
+  > platform, so the `unsafe` FFI in `windows.rs` and the ASAuthorization delegate path in
+  > `macos.rs` are compile-verified only. Blocked on: a provisioning profile with the Associated
+  > Domains capability + an HTTPS domain serving AASA (macOS, and `RP_ID` must move off
+  > `localhost`); a physical Windows 10 19H1+ machine with Hello (no VM substitute).
+  >
+  > Environment is prepared and waiting — see [native-smoke-setup.md](./native-smoke-setup.md).
+  > **Do not ship passkeys to users until this is run on both platforms.**
 
 **Checkpoint**: Real Touch ID / Windows Hello prompts work; Linux honestly reports unavailable.
+*Not reached — see the T026 deferral note above.*
 
 ---
 
