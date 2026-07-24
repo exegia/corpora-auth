@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the cancel_oauth_flow command without any pre-configured scope."
         },
         {
+          "description": "Enables the delete_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delete-passkey",
+          "markdownDescription": "Enables the delete_passkey command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delete_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delete-passkey",
+          "markdownDescription": "Denies the delete_passkey command without any pre-configured scope."
+        },
+        {
           "description": "Enables the get_identities command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-identities",
@@ -317,6 +329,18 @@
           "type": "string",
           "const": "deny-get-identities",
           "markdownDescription": "Denies the get_identities command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_passkey_capability command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-passkey-capability",
+          "markdownDescription": "Enables the get_passkey_capability command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_passkey_capability command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-passkey-capability",
+          "markdownDescription": "Denies the get_passkey_capability command without any pre-configured scope."
         },
         {
           "description": "Enables the get_session command without any pre-configured scope.",
@@ -355,6 +379,66 @@
           "markdownDescription": "Denies the link_identity command without any pre-configured scope."
         },
         {
+          "description": "Enables the list_passkeys command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-list-passkeys",
+          "markdownDescription": "Enables the list_passkeys command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the list_passkeys command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-list-passkeys",
+          "markdownDescription": "Denies the list_passkeys command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the passkey_authentication_options command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-passkey-authentication-options",
+          "markdownDescription": "Enables the passkey_authentication_options command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the passkey_authentication_options command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-passkey-authentication-options",
+          "markdownDescription": "Denies the passkey_authentication_options command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the passkey_authentication_verify command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-passkey-authentication-verify",
+          "markdownDescription": "Enables the passkey_authentication_verify command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the passkey_authentication_verify command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-passkey-authentication-verify",
+          "markdownDescription": "Denies the passkey_authentication_verify command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the passkey_registration_options command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-passkey-registration-options",
+          "markdownDescription": "Enables the passkey_registration_options command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the passkey_registration_options command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-passkey-registration-options",
+          "markdownDescription": "Denies the passkey_registration_options command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the passkey_registration_verify command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-passkey-registration-verify",
+          "markdownDescription": "Enables the passkey_registration_verify command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the passkey_registration_verify command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-passkey-registration-verify",
+          "markdownDescription": "Denies the passkey_registration_verify command without any pre-configured scope."
+        },
+        {
           "description": "Enables the refresh_session command without any pre-configured scope.",
           "type": "string",
           "const": "allow-refresh-session",
@@ -365,6 +449,30 @@
           "type": "string",
           "const": "deny-refresh-session",
           "markdownDescription": "Denies the refresh_session command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the register_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-register-passkey",
+          "markdownDescription": "Enables the register_passkey command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the register_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-register-passkey",
+          "markdownDescription": "Denies the register_passkey command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the rename_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-rename-passkey",
+          "markdownDescription": "Enables the rename_passkey command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the rename_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-rename-passkey",
+          "markdownDescription": "Denies the rename_passkey command without any pre-configured scope."
         },
         {
           "description": "Enables the reset_password_for_email command without any pre-configured scope.",
@@ -389,6 +497,18 @@
           "type": "string",
           "const": "deny-sign-in-with-otp",
           "markdownDescription": "Denies the sign_in_with_otp command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sign_in_with_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sign-in-with-passkey",
+          "markdownDescription": "Enables the sign_in_with_passkey command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sign_in_with_passkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sign-in-with-passkey",
+          "markdownDescription": "Denies the sign_in_with_passkey command without any pre-configured scope."
         },
         {
           "description": "Enables the sign_in_with_password command without any pre-configured scope.",

@@ -17,12 +17,14 @@ use std::sync::Arc;
 
 use tokio::sync::{Mutex, Notify};
 
+use crate::ceremony::{Availability, CeremonyOutcome, CeremonyProvider};
 use crate::config::ValidatedConfig;
 use crate::engine::{AuthEngine, OtpKind, OtpTarget};
 use crate::error::{Error, ErrorKind, Result};
 use crate::models::{
-    AuthChangeEvent, AuthChangePayload, Identity, SanitizedSession, Session, SignUpResult,
-    SignUpStatus, User,
+    AuthChangeEvent, AuthChangePayload, Identity, Passkey, PasskeyCapability, PasskeyChallenge,
+    PasskeyFlowStatus, PasskeyRegistrationResult, PasskeySignInResult, SanitizedSession, Session,
+    SignUpResult, SignUpStatus, User,
 };
 use crate::persistence::SessionStore;
 
@@ -56,6 +58,11 @@ pub struct AuthCore {
     /// In-flight identity-link round-trip (feature 003). Kept OUTSIDE the
     /// auth state machine: the user stays fully SignedIn while linking.
     link_cancel: std::sync::Mutex<Option<Arc<Notify>>>,
+    /// App-supplied WebAuthn ceremony provider (feature 004). Takes
+    /// precedence over the built-in for the target OS (FR-006).
+    ceremony: std::sync::Mutex<Option<Arc<dyn CeremonyProvider>>>,
+    /// Built-in (OS) ceremony provider, installed at plugin init.
+    builtin_ceremony: std::sync::Mutex<Option<Arc<dyn CeremonyProvider>>>,
 }
 
 pub struct ListenerHandle(pub u64);
@@ -71,6 +78,8 @@ impl AuthCore {
             next_listener_id: AtomicU64::new(1),
             refresh_notify: Notify::new(),
             link_cancel: std::sync::Mutex::new(None),
+            ceremony: std::sync::Mutex::new(None),
+            builtin_ceremony: std::sync::Mutex::new(None),
         }
     }
 
@@ -409,6 +418,243 @@ impl AuthCore {
             self.emit(AuthChangeEvent::IdentitiesChanged, Some(&session));
         }
         Ok(identities)
+    }
+
+    // -- passkeys (feature 004) ----------------------------------------------
+
+    /// Registers the app-supplied ceremony provider (wins over built-ins).
+    pub fn set_ceremony_provider(&self, provider: Arc<dyn CeremonyProvider>) {
+        *self.ceremony.lock().unwrap() = Some(provider);
+    }
+
+    /// Installs the built-in (OS) provider — the fallback tier (FR-006).
+    pub fn set_builtin_ceremony(&self, provider: Arc<dyn CeremonyProvider>) {
+        *self.builtin_ceremony.lock().unwrap() = Some(provider);
+    }
+
+    fn resolved_ceremony(&self) -> Option<Arc<dyn CeremonyProvider>> {
+        self.ceremony
+            .lock()
+            .unwrap()
+            .clone()
+            .or_else(|| self.builtin_ceremony.lock().unwrap().clone())
+    }
+
+    /// Device-side capability only — never touches the network (research R7).
+    pub fn passkey_capability(&self) -> PasskeyCapability {
+        match self.resolved_ceremony() {
+            None => PasskeyCapability {
+                usable: false,
+                reason: Some("unsupportedPlatform".into()),
+            },
+            Some(p) => match p.availability() {
+                Availability::Available => PasskeyCapability {
+                    usable: true,
+                    reason: None,
+                },
+                Availability::Unavailable(reason) => PasskeyCapability {
+                    usable: false,
+                    reason: Some(reason),
+                },
+            },
+        }
+    }
+
+    fn require_ceremony(&self) -> Result<Arc<dyn CeremonyProvider>> {
+        self.resolved_ceremony().ok_or_else(|| {
+            Error::new(
+                ErrorKind::PasskeyUnsupported,
+                "no passkey ceremony is available on this platform \
+                 (check getPasskeyCapability before showing passkey UI)",
+            )
+        })
+    }
+
+    /// Runs the (possibly long) OS prompt on a blocking thread. No network
+    /// timeout spans the prompt (FR-014) — the server challenge TTL is the
+    /// effective ceiling.
+    async fn run_ceremony(
+        provider: Arc<dyn CeremonyProvider>,
+        options: serde_json::Value,
+        register: bool,
+    ) -> Result<Option<serde_json::Value>> {
+        let options_json = options.to_string();
+        let outcome = tokio::task::spawn_blocking(move || {
+            if register {
+                provider.create(&options_json)
+            } else {
+                provider.get(&options_json)
+            }
+        })
+        .await
+        .map_err(|e| Error::unknown(format!("ceremony task failed: {e}")))?;
+        match outcome {
+            CeremonyOutcome::Completed(credential) => {
+                let value = serde_json::from_str(&credential).map_err(|e| {
+                    Error::new(
+                        ErrorKind::PasskeyVerificationFailed,
+                        format!("ceremony returned malformed credential JSON: {e}"),
+                    )
+                })?;
+                Ok(Some(value))
+            }
+            CeremonyOutcome::Cancelled => Ok(None),
+            CeremonyOutcome::Unsupported(reason) => Err(Error::new(
+                ErrorKind::PasskeyUnsupported,
+                format!("passkey ceremony unsupported: {reason}"),
+            )),
+        }
+    }
+
+    fn signed_in_token(state: &AuthState, what: &str) -> Result<String> {
+        match state {
+            AuthState::SignedIn(s) => Ok(s.access_token.clone()),
+            _ => Err(Error::session_expired(format!(
+                "{what} requires a signed-in session"
+            ))),
+        }
+    }
+
+    /// Two-step surface, step 1 (US4): bearer challenge for registration.
+    pub async fn passkey_registration_options(&self) -> Result<PasskeyChallenge> {
+        let token = Self::signed_in_token(&*self.state.lock().await, "registering a passkey")?;
+        let (challenge_id, options, expires_at) =
+            with_timeout(self.engine.passkey_registration_options(&token)).await?;
+        Ok(PasskeyChallenge {
+            challenge_id,
+            options,
+            expires_at,
+        })
+    }
+
+    /// Two-step surface, step 2: verify and announce. Shared by the one-shot
+    /// command so each server round-trip exists exactly once.
+    pub async fn passkey_registration_verify(
+        &self,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<Passkey> {
+        let mut state = self.state.lock().await;
+        let token = Self::signed_in_token(&state, "registering a passkey")?;
+        let passkey = with_timeout(self.engine.passkey_registration_verify(
+            &token,
+            challenge_id,
+            credential,
+        ))
+        .await?;
+        if let AuthState::SignedIn(s) = &mut *state {
+            let session = s.clone();
+            self.emit(AuthChangeEvent::PasskeysChanged, Some(&session));
+        }
+        Ok(passkey)
+    }
+
+    /// One-shot registration: options → OS prompt → verify (US1).
+    /// Cancellation is a result status, never an error (FR-009).
+    pub async fn register_passkey(&self) -> Result<PasskeyRegistrationResult> {
+        let provider = self.require_ceremony()?;
+        let challenge = self.passkey_registration_options().await?;
+        let Some(credential) = Self::run_ceremony(provider, challenge.options, true).await? else {
+            return Ok(PasskeyRegistrationResult {
+                status: PasskeyFlowStatus::Cancelled,
+                passkey: None,
+            });
+        };
+        let passkey = self
+            .passkey_registration_verify(&challenge.challenge_id, &credential)
+            .await?;
+        Ok(PasskeyRegistrationResult {
+            status: PasskeyFlowStatus::Completed,
+            passkey: Some(passkey),
+        })
+    }
+
+    /// Two-step surface, step 1: anonymous discoverable-login challenge.
+    pub async fn passkey_authentication_options(&self) -> Result<PasskeyChallenge> {
+        let (challenge_id, options, expires_at) =
+            with_timeout(self.engine.passkey_authentication_options()).await?;
+        Ok(PasskeyChallenge {
+            challenge_id,
+            options,
+            expires_at,
+        })
+    }
+
+    /// Two-step surface, step 2: verify the assertion and adopt the session
+    /// through the same path as OTP verify / PKCE exchange (FR-002/FR-003).
+    pub async fn passkey_authentication_verify(
+        &self,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<Session> {
+        let mut state = self.state.lock().await;
+        let session = with_timeout(
+            self.engine
+                .passkey_authentication_verify(challenge_id, credential),
+        )
+        .await?;
+        self.store.save(&session);
+        self.emit(AuthChangeEvent::SignedIn, Some(&session));
+        *state = AuthState::SignedIn(session.clone());
+        drop(state);
+        self.refresh_notify.notify_waiters();
+        Ok(session)
+    }
+
+    /// One-shot discoverable sign-in: options → OS prompt → verify (US2).
+    pub async fn sign_in_with_passkey(&self) -> Result<PasskeySignInResult> {
+        let provider = self.require_ceremony()?;
+        let challenge = self.passkey_authentication_options().await?;
+        let Some(credential) = Self::run_ceremony(provider, challenge.options, false).await? else {
+            return Ok(PasskeySignInResult {
+                status: PasskeyFlowStatus::Cancelled,
+                session: None,
+            });
+        };
+        let session = self
+            .passkey_authentication_verify(&challenge.challenge_id, &credential)
+            .await?;
+        Ok(PasskeySignInResult {
+            status: PasskeyFlowStatus::Completed,
+            session: Some(session.sanitized()),
+        })
+    }
+
+    pub async fn list_passkeys(&self) -> Result<Vec<Passkey>> {
+        let token = Self::signed_in_token(&*self.state.lock().await, "listing passkeys")?;
+        with_timeout(self.engine.list_passkeys(&token)).await
+    }
+
+    /// Renames a passkey. Length validated client-side before any HTTP
+    /// (spec edge case; server cap is 120 chars).
+    pub async fn rename_passkey(&self, passkey_id: &str, friendly_name: &str) -> Result<Passkey> {
+        let name = friendly_name.trim();
+        if name.is_empty() || name.chars().count() > 120 {
+            return Err(Error::unknown(
+                "passkey name must be between 1 and 120 characters",
+            ));
+        }
+        let mut state = self.state.lock().await;
+        let token = Self::signed_in_token(&state, "renaming a passkey")?;
+        let passkey = with_timeout(self.engine.rename_passkey(&token, passkey_id, name)).await?;
+        if let AuthState::SignedIn(s) = &mut *state {
+            let session = s.clone();
+            self.emit(AuthChangeEvent::PasskeysChanged, Some(&session));
+        }
+        Ok(passkey)
+    }
+
+    /// Deletes a passkey. NOTE: the server has no last-passkey guardrail
+    /// (research R4) — confirmation UX is the kit's responsibility.
+    pub async fn delete_passkey(&self, passkey_id: &str) -> Result<()> {
+        let mut state = self.state.lock().await;
+        let token = Self::signed_in_token(&state, "deleting a passkey")?;
+        with_timeout(self.engine.delete_passkey(&token, passkey_id)).await?;
+        if let AuthState::SignedIn(s) = &mut *state {
+            let session = s.clone();
+            self.emit(AuthChangeEvent::PasskeysChanged, Some(&session));
+        }
+        Ok(())
     }
 
     // -- OAuth state hooks (flow logic lives in oauth.rs) --------------------

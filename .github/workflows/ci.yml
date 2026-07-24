@@ -5,6 +5,12 @@ on:
     branches: [main, next, dev]
   pull_request:
 
+# Least privilege for every job below: CI only ever reads the checkout.
+# Set at workflow level so new jobs inherit it rather than each needing
+# its own block (CodeQL actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   rust:
     runs-on: ubuntu-latest
@@ -19,6 +25,40 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  # src/ceremony/windows.rs is cfg(windows) — the ubuntu job never compiles it,
+  # and neither does a macOS dev host. Without this job the Windows built-in
+  # ceremony (feature 004 T025) reaches no compiler at all.
+  # Compilation + platform-agnostic tests only: webauthn.dll and the Windows
+  # Hello prompt still need the manual smoke checklist on real hardware.
+  rust-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  # src/ceremony/macos.rs is cfg(target_os = "macos") — same gap as the Windows
+  # job above, but lower-risk because it does compile on a macOS dev host. This
+  # job stops that from depending on who happens to be building.
+  # Compilation + platform-agnostic tests only: the ASAuthorization prompt needs
+  # Associated Domains, a provisioning profile, and a human at a Touch ID Mac —
+  # that stays the manual smoke checklist (T026).
+  # NOTE: macOS runners bill at 10x (Windows 2x, Linux 1x).
+  rust-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
 

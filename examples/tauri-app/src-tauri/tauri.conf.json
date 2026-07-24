@@ -34,6 +34,9 @@
       "oauth": {
         "callbackPorts": [43823, 43824, 43825],
         "flowTimeoutSecs": 300
+      },
+      "passkeys": {
+        "origin": "http://localhost:1420"
       }
     }
   }

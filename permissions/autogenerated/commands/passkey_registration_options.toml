@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-passkey-registration-options"
+description = "Enables the passkey_registration_options command without any pre-configured scope."
+commands.allow = ["passkey_registration_options"]
+
+[[permission]]
+identifier = "deny-passkey-registration-options"
+description = "Denies the passkey_registration_options command without any pre-configured scope."
+commands.deny = ["passkey_registration_options"]

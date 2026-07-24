@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      macOS platform passkeys (feature 004, research R6/R8).
+
+      ASAuthorizationPlatformPublicKeyCredentialProvider derives the asserted
+      origin from this Associated Domains binding, NOT from the plugin's
+      `passkeys.origin` config (that one is Windows-only).
+
+      The domain here must match GOTRUE_WEBAUTHN_RP_ID, and that domain must
+      serve /.well-known/apple-app-site-association over HTTPS with a
+      "webcredentials" section naming <TEAM_ID>.<bundle identifier>.
+
+      This entitlement is restricted: it is only honored at runtime when the
+      app is signed with a provisioning profile whose App ID has the
+      Associated Domains capability enabled. Code-signing will happily embed
+      it without one, but swcd will ignore it and every ceremony fails.
+
+      Replace `localhost` below with the real RP-ID domain before use; append
+      `?mode=developer` to have the system fetch the AASA directly from the
+      domain instead of Apple's CDN while testing.
+
+      NOT wired into tauri.conf.json yet: setting bundle.macOS.entitlements
+      makes generate_context! resolve bundle icons, and this example ships
+      none (bundle.active = false). For a real signed run, generate icons
+      (`tauri icon`), set bundle.active = true, and add:
+          "macOS": { "entitlements": "Entitlements.plist" }
+      to the bundle block.
+    -->
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>webcredentials:localhost</string>
+    </array>
+</dict>
+</plist>

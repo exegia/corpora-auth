@@ -4,6 +4,11 @@ import type {
   AuthChangePayload,
   AuthError,
   Identity,
+  Passkey,
+  PasskeyCapability,
+  PasskeyChallenge,
+  PasskeyRegistrationResult,
+  PasskeySignInResult,
   Provider,
   Session,
   SignUpOptions,
@@ -31,6 +36,9 @@ const ERROR_KINDS = new Set([
   "permissionDenied",
   "identityAlreadyLinked",
   "lastSignInMethod",
+  "passkeyChallengeExpired",
+  "passkeyVerificationFailed",
+  "passkeyUnsupported",
   "unknown",
 ]);
 
@@ -136,9 +144,83 @@ export function unlinkIdentity(opts: { identityId: string }): Promise<Identity[]
   return invoke(`${PLUGIN}unlink_identity`, { ...opts });
 }
 
+// -- passkeys (feature 004) ---------------------------------------------------
+
+/** Reports whether passkey prompts can run on this device. Never touches the
+ * network — use it to show/hide passkey UI up front. */
+export function getPasskeyCapability(): Promise<PasskeyCapability> {
+  return invoke(`${PLUGIN}get_passkey_capability`);
+}
+
+/**
+ * Registers a passkey on the current account: server challenge → OS prompt →
+ * verification. Resolves `{status: "cancelled"}` if the user dismisses the
+ * prompt (not an error). The name is server-derived; use `renamePasskey` to
+ * customize it.
+ */
+export function registerPasskey(): Promise<PasskeyRegistrationResult> {
+  return invoke(`${PLUGIN}register_passkey`);
+}
+
+/**
+ * Signs in with a passkey — no email needed (discoverable credentials). The
+ * OS account picker handles selection; cancellation resolves with
+ * `{status: "cancelled"}`.
+ */
+export function signInWithPasskey(): Promise<PasskeySignInResult> {
+  return invoke(`${PLUGIN}sign_in_with_passkey`);
+}
+
+/** Lists the passkeys registered on the current account. */
+export function listPasskeys(): Promise<Passkey[]> {
+  return invoke(`${PLUGIN}list_passkeys`);
+}
+
+/** Renames a passkey (1–120 characters). */
+export function renamePasskey(opts: {
+  passkeyId: string;
+  friendlyName: string;
+}): Promise<Passkey> {
+  return invoke(`${PLUGIN}rename_passkey`, { ...opts });
+}
+
+/**
+ * Deletes a passkey. NOTE: the server does not prevent deleting the last
+ * passkey — confirm with the user first.
+ */
+export function deletePasskey(opts: { passkeyId: string }): Promise<void> {
+  return invoke(`${PLUGIN}delete_passkey`, { ...opts });
+}
+
+// Two-step surface: run your own WebAuthn ceremony (e.g. where the webview
+// supports navigator.credentials) while the plugin handles the server side.
+
+export function passkeyRegistrationOptions(): Promise<PasskeyChallenge> {
+  return invoke(`${PLUGIN}passkey_registration_options`);
+}
+
+export function passkeyRegistrationVerify(opts: {
+  challengeId: string;
+  credential: unknown;
+}): Promise<Passkey> {
+  return invoke(`${PLUGIN}passkey_registration_verify`, { ...opts });
+}
+
+export function passkeyAuthenticationOptions(): Promise<PasskeyChallenge> {
+  return invoke(`${PLUGIN}passkey_authentication_options`);
+}
+
+export function passkeyAuthenticationVerify(opts: {
+  challengeId: string;
+  credential: unknown;
+}): Promise<Session> {
+  return invoke(`${PLUGIN}passkey_authentication_verify`, { ...opts });
+}
+
 /**
  * Subscribes to auth state changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED,
- * PASSWORD_RECOVERY, IDENTITIES_CHANGED). Resolves to an unlisten function.
+ * PASSWORD_RECOVERY, IDENTITIES_CHANGED, PASSKEYS_CHANGED). Resolves to an
+ * unlisten function.
  */
 export function onAuthStateChange(
   cb: (payload: AuthChangePayload) => void,
