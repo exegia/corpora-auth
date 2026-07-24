@@ -5,6 +5,12 @@ on:
     branches: [main, next, dev]
   pull_request:
 
+# Least privilege for every job below: CI only ever reads the checkout.
+# Set at workflow level so new jobs inherit it rather than each needing
+# its own block (CodeQL actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   rust:
     runs-on: ubuntu-latest

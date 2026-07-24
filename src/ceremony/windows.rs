@@ -439,6 +439,18 @@ impl CeremonyProvider for WindowsCeremony {
             return map_error(api, hr);
         }
         let result = unsafe {
+            // SAFETY: WebAuthNAuthenticatorMakeCredential's contract is that on
+            // S_OK it writes a pointer to a fully initialized attestation struct
+            // that stays valid until WebAuthNFreeCredentialAttestation. The
+            // guard above returns early unless hr == 0 *and* the pointer is
+            // non-null, so this dereference only runs when both hold. Inner
+            // buffer pointers are null/length-checked in `slice_b64`.
+            //
+            // CodeQL rust/access-invalid-pointer flags this: it cannot model
+            // FFI out-parameter initialization and so treats any deref of a
+            // pointer written by an extern fn as possibly-invalid. Dismissed
+            // on PR #8 as a false positive. NOTE: this path is compile-verified
+            // only — the T026 hardware smoke checklist has not been run.
             let attestation = &*attestation_ptr;
             let id = slice_b64(attestation.pbCredentialId, attestation.cbCredentialId);
             json!({
@@ -520,6 +532,12 @@ impl CeremonyProvider for WindowsCeremony {
             return map_error(api, hr);
         }
         let result = unsafe {
+            // SAFETY: same contract as `create` above — WebAuthNAuthenticator-
+            // GetAssertion writes a fully initialized assertion on S_OK, valid
+            // until WebAuthNFreeAssertion, and the guard returns early unless
+            // hr == 0 and the pointer is non-null. Inner buffers go through
+            // `slice_b64`, which null/length-checks. CodeQL
+            // rust/access-invalid-pointer false positive, dismissed on PR #8.
             let assertion = &*assertion_ptr;
             let id = slice_b64(assertion.Credential.pbId, assertion.Credential.cbId);
             let user_handle = slice_b64(assertion.pbUserId, assertion.cbUserId);
