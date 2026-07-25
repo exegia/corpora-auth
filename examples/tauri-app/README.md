@@ -6,7 +6,7 @@ Runnable Tauri v2 app demonstrating `tauri-plugin-supabase-auth` and the
 ## Prerequisites
 
 - Rust + Tauri v2 system prerequisites (<https://v2.tauri.app/start/prerequisites/>)
-- Node 20+, pnpm 9
+- Bun 1.3+
 - A Supabase project. Easiest: the local stack —
 
   ```bash
@@ -17,8 +17,8 @@ Runnable Tauri v2 app demonstrating `tauri-plugin-supabase-auth` and the
 ## Run
 
 ```bash
-pnpm install                    # repo root
-pnpm --filter tauri-app tauri dev
+bun install                     # repo root
+cd examples/tauri-app && bun run tauri dev
 ```
 
 The plugin config lives in `src-tauri/tauri.conf.json` under

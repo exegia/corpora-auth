@@ -6,13 +6,13 @@ Contracts: [onboarding-ui.md](./contracts/onboarding-ui.md); entities: [data-mod
 
 ## Prerequisites
 
-- Everything from feature 001's quickstart (local Supabase stack, pnpm workspace installed)
+- Everything from feature 001's quickstart (local Supabase stack, bun workspace installed)
 - Example app capabilities include `supabase-auth:allow-update-user` (already granted)
 - Two project configs exercised: confirmation **disabled** (local stack default) and **enabled** (`supabase/config.toml` → `[auth.email] enable_confirmations = true`, then `supabase stop && supabase start`); mail UI at `http://127.0.0.1:54324`
 
 ```bash
-pnpm install
-pnpm --filter tauri-app tauri dev
+bun install
+(cd examples/tauri-app && bun run tauri dev)
 ```
 
 ## Scenario 1 — Credentials → profile → complete (US1, P1)
@@ -51,12 +51,12 @@ Confirmation enabled:
 ## Automated suites
 
 ```bash
-pnpm --filter @exegia/auth-ui test   # includes new onboarding hook/block/lib tests:
+bun run --filter @exegia/auth-ui test # includes new onboarding hook/block/lib tests:
                                      #  - state machine transitions incl. resume + latch
                                      #  - waiting-state retry loop (fake timers) + resend rate-limit
                                      #  - config→zod generation, status codec (corrupt → safe default)
                                      #  - axe zero critical violations per step state
-pnpm --filter @exegia/auth-ui build  # tsc clean
+bun run --filter @exegia/auth-ui build # tsc clean
 ```
 
 **Pass criteria**: scenarios 1–3 fully green on both project configs where applicable; SC-003 spot-check — every failure observed is a categorized, retryable message; automated suites green in CI.

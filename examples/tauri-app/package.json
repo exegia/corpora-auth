@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "echo \"example app: see root pnpm test:e2e (Rust lifecycle E2E)\""
+    "test": "echo \"example app: see root bun run test:e2e (Rust lifecycle E2E)\""
   },
   "dependencies": {
     "@exegia/auth-ui": "workspace:*",

@@ -186,5 +186,5 @@ naming the setting:
 ## Tests
 
 ```bash
-pnpm --filter @exegia/auth-ui test   # Testing Library + vitest-axe
+bun run --filter @exegia/auth-ui test  # Testing Library + vitest-axe
 ```

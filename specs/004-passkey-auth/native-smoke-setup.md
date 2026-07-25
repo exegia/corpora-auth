@@ -14,7 +14,7 @@ wired up, what was verified without hardware, and the one gate that blocks the m
 | GoTrue | v2.191.0, `GOTRUE_PASSKEY_ENABLED=true` |
 | RP config | `RP_ID=localhost`, display name `Supabase Auth Example`, origins `http://localhost:1420`, `http://127.0.0.1:1420`, `tauri://localhost` |
 | Test user | `passkey-smoke@example.com` / `passkey-smoke-1234`, email pre-confirmed |
-| Example app | `pnpm tauri dev` runs against the stack; all 10 passkey permissions granted |
+| Example app | `bun run tauri dev` runs against the stack; all 10 passkey permissions granted |
 | `passkeys.origin` | `http://localhost:1420` in `tauri.conf.json` (Windows-only — macOS ignores it) |
 
 Files added for this: `supabase/config.toml` (`[auth.passkey]` + `[auth.webauthn]`),

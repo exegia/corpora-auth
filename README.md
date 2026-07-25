@@ -56,8 +56,8 @@ The npm package lives on GitHub Packages, so point the `@exegia` scope there:
 ```
 
 ```bash
-pnpm add @exegia/plugin-supabase-auth
-pnpm add @exegia/auth-ui        # optional: the UI kit
+bun add @exegia/plugin-supabase-auth
+bun add @exegia/auth-ui        # optional: the UI kit
 ```
 
 ### 3. Configure your Supabase project
@@ -298,8 +298,8 @@ Built-in native ceremonies for macOS (AuthenticationServices) and Windows (`weba
 ```bash
 git clone https://github.com/exegia/corpora-auth && cd corpora-auth
 supabase init && supabase start        # local stack; mail UI at http://127.0.0.1:54324
-pnpm install
-pnpm --filter tauri-app tauri dev
+bun install
+cd examples/tauri-app && bun run tauri dev
 ```
 
 The example wires every block to the local stack out of the box — see [examples/tauri-app](./examples/tauri-app).
@@ -317,9 +317,9 @@ The example wires every block to the local stack out of the box — see [example
 
 ```bash
 cargo test                              # 40 Rust contract tests (wiremock GoTrue)
-pnpm install && pnpm -r build
-pnpm --filter @exegia/auth-ui test      # 44 UI tests incl. accessibility
-pnpm test:e2e                           # lifecycle E2E vs a live stack (SUPABASE_E2E_URL / SUPABASE_E2E_KEY)
+bun install && bun run build
+bun run --filter @exegia/auth-ui test   # 44 UI tests incl. accessibility
+bun run test:e2e                        # lifecycle E2E vs a live stack (SUPABASE_E2E_URL / SUPABASE_E2E_KEY)
 ```
 
 Design docs (spec, plan, research, contracts) live in [`specs/001-supabase-auth-plugin/`](./specs/001-supabase-auth-plugin).
