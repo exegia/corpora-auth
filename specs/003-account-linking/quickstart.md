@@ -12,7 +12,7 @@ Contracts: [identity-api.md](./contracts/identity-api.md); entities: [data-model
 - Example capabilities include the three identity permissions (granted in this feature's example changes)
 
 ```bash
-pnpm install && pnpm --filter tauri-app tauri dev
+bun install && (cd examples/tauri-app && bun run tauri dev)
 ```
 
 ## Scenario 1 — Connect a provider to an email account (US1, P1)
@@ -51,8 +51,8 @@ Set `enable_manual_linking = false`, restart the stack, attempt any identity ope
 ```bash
 cargo test --test identities          # wiremock: list-from-/user, authorize→loopback→pkce link flow,
                                       # unlink-by-identity_id, all error-code mappings (R4)
-pnpm --filter @exegia/auth-ui test    # useIdentities + LinkedAccounts states incl. axe
-pnpm test:e2e                         # + identities smoke (list via live stack)
+bun run --filter @exegia/auth-ui test  # useIdentities + LinkedAccounts states incl. axe
+bun run test:e2e                       # + identities smoke (list via live stack)
 ```
 
 **Pass criteria**: Scenarios 1–3 green; SC-004 spot-check — no reachable path removes the last identity; SC-003 — every failure observed is categorized and retryable where meaningful.

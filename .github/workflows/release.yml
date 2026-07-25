@@ -24,24 +24,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - uses: pnpm/action-setup@v4
+      # Reads the bun version from the root package.json "packageManager" field.
+      - uses: oven-sh/setup-bun@v2
+      # Still needed: writes the .npmrc (registry + auth token) that
+      # `bun publish` reads, and provides `node` for the scripts below.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
           registry-url: https://npm.pkg.github.com
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
       # Gate: never release red. Build first — the UI tests need the
       # bindings package's dist to exist for module resolution.
-      - run: pnpm -r build
-      - run: pnpm --filter @exegia/auth-ui test
+      - run: bun run build
+      - run: bun run --filter @exegia/auth-ui test
 
       - name: Bump versions in lockstep
         id: bump
         run: |
-          pnpm --filter @exegia/plugin-supabase-auth exec npm version ${{ inputs.bump }} --no-git-tag-version
-          pnpm --filter @exegia/auth-ui exec npm version ${{ inputs.bump }} --no-git-tag-version
+          (cd guest-js && npm version ${{ inputs.bump }} --no-git-tag-version)
+          (cd ui && npm version ${{ inputs.bump }} --no-git-tag-version)
           VERSION=$(node -p "require('./guest-js/package.json').version")
           # Keep the crate version aligned (first `version =` in [package]).
           python3 -c "import re,sys; p='Cargo.toml'; s=open(p).read(); open(p,'w').write(re.sub(r'^version = \".*\"$', 'version = \"'+sys.argv[1]+'\"', s, count=1, flags=re.M))" "$VERSION"
@@ -57,14 +59,29 @@ jobs:
           git tag -a "v${{ steps.bump.outputs.version }}" -m "v${{ steps.bump.outputs.version }}"
           git push origin main "refs/tags/v${{ steps.bump.outputs.version }}"
 
+      # bun publish strips workspace:* protocols but (unlike pnpm) does not
+      # apply publishConfig field overrides (main/types/exports), which the
+      # ui package relies on to point consumers at dist/ instead of src/.
+      # Apply them manually after the release commit so they never land in git.
+      - name: Apply publishConfig field overrides
+        working-directory: ui
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const { registry, ...overrides } = pkg.publishConfig ?? {};
+            Object.assign(pkg, overrides);
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          '
+
       - name: Publish @exegia/plugin-supabase-auth
         working-directory: guest-js
-        run: pnpm publish --no-git-checks
+        run: bun publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish @exegia/auth-ui
         working-directory: ui
-        run: pnpm publish --no-git-checks
+        run: bun publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

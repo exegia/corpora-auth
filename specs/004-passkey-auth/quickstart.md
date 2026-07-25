@@ -14,7 +14,7 @@ Runnable scenarios proving the feature end-to-end. Contracts in [contracts/passk
    ```
 
    plus the shared WebAuthn RP config (env: `GOTRUE_WEBAUTHN_RP_ID=localhost`, `GOTRUE_WEBAUTHN_RP_DISPLAY_NAME="Dev App"`, `GOTRUE_WEBAUTHN_RP_ORIGINS=http://localhost:1420`). Note: `RP_ID` is permanent per project in practice — changing it invalidates all enrolled passkeys (research R8).
-2. Rust 1.80+, pnpm, the example app configured against the local stack (`examples/tauri-app`), with the passkey opt-in permissions added to `capabilities/default.json`.
+2. Rust 1.80+, Bun 1.3+, the example app configured against the local stack (`examples/tauri-app`), with the passkey opt-in permissions added to `capabilities/default.json`.
 3. A confirmed (email-verified) test user — sign-in guards reject unconfirmed accounts (`email_not_confirmed`).
 4. Headless suites need **no OS authenticator** — they inject the software ceremony provider (research R9). Native smoke tests need real hardware (Touch ID Mac / Windows Hello machine).
 
@@ -24,7 +24,7 @@ Runnable scenarios proving the feature end-to-end. Contracts in [contracts/passk
 cargo test --test passkeys        # wiremock + software ceremony: all 10 commands, cancellation,
                                   # expiry, disabled-project 404 mapping, provider precedence
 cargo test --test e2e_lifecycle   # + passkey-adopted session parity (restore/refresh/sign-out, SC-006)
-cd ui && pnpm test                # use-passkeys hook, <PasskeySignIn/>, <PasskeyManager/> (+ axe)
+cd ui && bun run test              # use-passkeys hook, <PasskeySignIn/>, <PasskeyManager/> (+ axe)
 ```
 
 Expected: all green; the passkeys suite must include at least one test per error-mapping row in research R4 and both cancellation paths returning `{status: "cancelled"}` with no error (SC-003).
