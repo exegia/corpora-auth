@@ -93,7 +93,7 @@ function Picker(): React.ReactElement {
       <Separator className="bg-border h-px" />
 
       {status === "signedIn" ? (
-        <p className="bg-muted rounded-md p-3 text-xs">
+        <p className="bg-card text-muted-foreground rounded-md border p-3 text-xs">
           Already signed in. Picking a method still opens its window, so you can
           watch a second sign-in replace this session.
         </p>
@@ -104,7 +104,7 @@ function Picker(): React.ReactElement {
           <li key={method.id}>
             <Tooltip.Root>
               <Tooltip.Trigger
-                className="hover:border-foreground/30 hover:bg-muted/50 flex h-full w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors disabled:opacity-50"
+                className="bg-card text-card-foreground hover:border-ring hover:shadow-sm flex h-full w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-all disabled:opacity-50"
                 disabled={opening !== null}
                 onClick={() => void open(method)}
                 render={<button type="button" />}

@@ -63,10 +63,11 @@ export const METHODS: AuthMethod[] = [
   {
     id: "passkey",
     title: "Passkey",
-    blurb: "Touch ID or Windows Hello, through the OS prompt.",
+    blurb:
+      "Sign in with Touch ID or Windows Hello. Register one first from “Manage this account”.",
     windowTitle: "Sign in with a passkey",
     width: 460,
-    height: 480,
+    height: 520,
     requiresPasskeys: true,
   },
   {

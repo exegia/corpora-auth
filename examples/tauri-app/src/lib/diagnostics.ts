@@ -52,6 +52,13 @@ function safeStringify(value: unknown): string {
 }
 
 /**
+ * Where the human-supplied configuration lives. Several failures here are not
+ * bugs — they are "you have not pasted a client secret yet" — so the hint
+ * points at the section that lists what to supply.
+ */
+export const SETUP_DOC = "README.md § Configuration you must supply";
+
+/**
  * A hint per error kind. The plugin's own messages are developer-oriented; a
  * kind maps to something the person in front of the app can act on.
  */
@@ -61,19 +68,61 @@ const NEXT_STEPS: Partial<Record<AuthError["kind"], string>> = {
   emailAlreadyRegistered: "That address already has an account — sign in instead.",
   otpExpired: "Codes are short-lived. Request a fresh one.",
   network: "The app could not reach Supabase. Is the local stack up (`make supabase-up`)?",
-  configuration: "The plugin config in tauri.conf.json is wrong. The message names the field.",
+  configuration: `The plugin config in tauri.conf.json is wrong — the message names the field. See ${SETUP_DOC}.`,
   sessionExpired: "The refresh token is no longer valid. Sign in again.",
   oauthFlowInterrupted: "The browser round-trip was cancelled or timed out.",
   rateLimited: "Too many attempts. Wait, then retry.",
   permissionDenied:
-    "The command is not granted to this window. Check `windows` and `permissions` in src-tauri/capabilities/default.json.",
-  passkeyUnsupported: "This device cannot run the passkey ceremony.",
+    "The command is not granted to this window. Check `windows` and `permissions` in src-tauri/capabilities/default.json — a label outside the `auth-*` glob gets none.",
+  passkeyUnsupported: `This build cannot run the passkey ceremony. On macOS that usually means the Associated Domains entitlement is not active — see ${SETUP_DOC}.`,
   passkeyChallengeExpired: "The passkey challenge timed out. Try again.",
-  passkeyVerificationFailed: "The authenticator rejected the challenge.",
+  passkeyVerificationFailed:
+    "The authenticator rejected the challenge. If you have not registered a passkey yet, sign in another way first and add one from “Manage this account”.",
 };
 
+/**
+ * Per-method advice for failures that never reach an `AuthError`.
+ *
+ * This is the common case for unconfigured providers: an OAuth attempt with no
+ * client id dies at the GoTrue redirect, so the rejection is a bare string and
+ * the kind map above has nothing to say about it. Without this the screen that
+ * exists to explain failures would be silent on the most likely one.
+ */
+const METHOD_SETUP: Partial<Record<AuthMethod["id"], string>> = {
+  google: `Google sign-in needs a client id/secret and \`skip_nonce_check\` in supabase/config.toml, plus the loopback callback in \`additional_redirect_urls\`. See ${SETUP_DOC}.`,
+  github: `GitHub sign-in needs a client id/secret in supabase/config.toml, plus the loopback callback in \`additional_redirect_urls\`. See ${SETUP_DOC}.`,
+  passkey: `Passkeys need a registered credential and, on macOS, a signed build with Associated Domains. See ${SETUP_DOC}.`,
+};
+
+/**
+ * Everything worth telling the user, most specific first.
+ *
+ * Returns both hints when both apply rather than preferring one: a cancelled
+ * GitHub round-trip reports `oauthFlowInterrupted`, but if GitHub was never
+ * configured the *real* answer is the setup pointer — and picking the kind
+ * hint alone would hide it behind an accurate-but-useless "you cancelled".
+ */
+export function nextSteps(d: Diagnostic): string[] {
+  const hints: string[] = [];
+
+  if (d.authError) {
+    const byKind = NEXT_STEPS[d.authError.kind];
+    if (byKind) hints.push(byKind);
+  } else {
+    hints.push(
+      "The IPC call was rejected before authentication was attempted — usually a missing capability for this window.",
+    );
+  }
+
+  const bySetup = METHOD_SETUP[d.method.id];
+  if (bySetup) hints.push(bySetup);
+
+  return hints;
+}
+
+/** Convenience for callers that only want the leading hint. */
 export function nextStep(d: Diagnostic): string | undefined {
-  return d.authError ? NEXT_STEPS[d.authError.kind] : undefined;
+  return nextSteps(d)[0];
 }
 
 /**
@@ -101,8 +150,10 @@ export function buildReport(d: Diagnostic): string {
     "",
   ];
 
-  const step = nextStep(d);
-  if (step) lines.push("## Likely cause", `- ${step}`, "");
+  const steps = nextSteps(d);
+  if (steps.length) {
+    lines.push("## Likely cause", ...steps.map((s) => `- ${s}`), "");
+  }
 
   if (d.raw) lines.push("## Raw rejection", "```json", d.raw, "```", "");
 

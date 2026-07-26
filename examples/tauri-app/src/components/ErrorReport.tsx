@@ -4,7 +4,7 @@ import { ScrollArea } from "@base-ui/react/scroll-area";
 import { Separator } from "@base-ui/react/separator";
 import { invoke } from "@tauri-apps/api/core";
 import { resolveMessage } from "@exegia/auth-ui";
-import { buildReport, copyText, nextStep, type Diagnostic } from "../lib/diagnostics";
+import { buildReport, copyText, nextSteps, type Diagnostic } from "../lib/diagnostics";
 
 const CLAUDE_URL = "https://claude.ai/new";
 
@@ -17,7 +17,7 @@ export function ErrorReport({
 }): React.ReactElement {
   const [copied, setCopied] = useState<null | "ok" | "fail">(null);
   const report = buildReport(diagnostic);
-  const hint = nextStep(diagnostic);
+  const hints = nextSteps(diagnostic);
 
   async function copy(): Promise<boolean> {
     const ok = await copyText(report);
@@ -46,21 +46,25 @@ export function ErrorReport({
         plugin's developer-oriented text (often the raw GoTrue JSON body), so
         it belongs in the details below rather than at the top of the screen.
       */}
-      <div className="flex flex-col gap-1">
+      <div className="border-destructive/25 bg-destructive/10 flex flex-col gap-1 rounded-lg border p-3">
         <p className="text-destructive text-sm font-semibold">
           {diagnostic.method.title} failed
         </p>
-        <p className="text-sm">
+        <p className="text-card-foreground text-sm">
           {diagnostic.authError
             ? resolveMessage(diagnostic.authError)
             : diagnostic.message}
         </p>
       </div>
 
-      {hint ? (
+      {hints.length > 0 ? (
         <div className="bg-muted rounded-md p-3">
           <p className="text-xs font-medium">Likely cause</p>
-          <p className="text-muted-foreground mt-1 text-xs">{hint}</p>
+          <ul className="text-muted-foreground mt-1 flex flex-col gap-1 text-xs">
+            {hints.map((hint) => (
+              <li key={hint}>{hint}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

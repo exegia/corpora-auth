@@ -49,12 +49,13 @@ export function MethodWindow({ method }: { method: AuthMethod }): React.ReactEle
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 p-6">
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-4 p-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold">{method.title}</h1>
         <p className="text-muted-foreground text-xs">{method.blurb}</p>
       </header>
 
+      <div className="bg-card text-card-foreground flex flex-col gap-5 rounded-xl border p-5 shadow-sm">
       {phase.kind === "success" ? (
         <SessionResult onClose={() => void close()} session={phase.session} />
       ) : phase.kind === "error" ? (
@@ -77,6 +78,7 @@ export function MethodWindow({ method }: { method: AuthMethod }): React.ReactEle
           </button>
         </>
       )}
+      </div>
     </main>
   );
 }
@@ -136,7 +138,19 @@ function MethodForm({
     case "otp":
       return <OtpForm onError={onError} onSuccess={onSuccess} />;
     case "passkey":
-      return <PasskeySignIn onError={onError} onSignedIn={onSuccess} />;
+      // Sign-in only. Registration lives behind authentication in the account
+      // window — a passkey is bound to an existing user, so there is no
+      // passkey-first sign-up path to offer here.
+      return (
+        <div className="flex flex-col gap-3">
+          <PasskeySignIn onError={onError} onSignedIn={onSuccess} />
+          <p className="text-muted-foreground text-xs">
+            Passkeys sign you in to an account you already have. To create one,
+            sign in another way and use <strong>Manage this account</strong> →{" "}
+            <strong>Passkeys</strong>.
+          </p>
+        </div>
+      );
     default:
       return <p className="text-sm">Unknown method.</p>;
   }

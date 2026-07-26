@@ -2,9 +2,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { methodFromLabel } from "./lib/methods";
+import { followSystemTheme } from "./lib/theme";
 import { MethodWindow } from "./windows/MethodWindow";
 import { PickerWindow } from "./windows/PickerWindow";
 import "./styles.css";
+
+// Before render, so a dark-mode launch never flashes the light palette.
+followSystemTheme();
 
 /**
  * Every window loads this same bundle; the window *label* decides what it
