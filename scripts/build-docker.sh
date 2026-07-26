@@ -1,43 +1,78 @@
 #!/usr/bin/env bash
-# `make build:docker` — deliberately unimplemented.
+# Build the Linux build/test toolchain image (docker/Dockerfile).
 #
-# The request left this one as "...", and there is no Docker anywhere in the
-# repo to infer an answer from: no Dockerfile, no compose file, no image
-# reference in CI. This is a Rust crate plus two npm packages plus a desktop
-# example — there is no long-running service to containerize, so guessing here
-# would mean inventing an artifact nobody asked for.
+#   ./scripts/build-docker.sh                 # build for the host architecture
+#   ./scripts/build-docker.sh --platform linux/amd64
+#   ./scripts/build-docker.sh --verify        # build, then exercise the toolchain
+#   ./scripts/build-docker.sh --shell         # build, then drop into it on /work
 #
-# Fill this in once the intent is settled; the three readings below produce
-# very different images.
+# Publishing is CI's job (.github/workflows/docker.yml) — this script never
+# pushes. On Apple Silicon the default build is arm64; the amd64 image CI runs
+# on is only really proven by CI itself.
 
 # shellcheck source=./lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-heading "build:docker is not implemented yet"
+: "${IMAGE:=ghcr.io/exegia/corpora-auth-ci}"
+: "${TAG:=local}"
 
-info "No Dockerfile or compose file exists in this repo, and the brief left this"
-info "target unspecified. Pick a reading and this script becomes a few lines."
+PLATFORM=""
+VERIFY=0
+SHELL_IN=0
 
-heading "Candidate readings"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --platform) PLATFORM="${2:-}"; shift ;;
+    --verify) VERIFY=1 ;;
+    --shell) SHELL_IN=1 ;;
+    --tag) TAG="${2:-}"; shift ;;
+    -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) die "unknown flag: $1" ;;
+  esac
+  shift
+done
 
-printf '  %s1. Linux build/test toolchain image%s\n' "$C_BOLD" "$C_RESET"
-info "   Rust + libwebkit2gtk-4.1-dev + bun, mirroring the ubuntu jobs in"
-info "   .github/workflows/ci.yml. Lets macOS developers reproduce the Linux"
-info "   build locally and gives CI a warm cache. Publishable to ghcr.io."
+have docker || die "docker not found — install Docker Desktop or the engine"
+docker info >/dev/null 2>&1 || die "the docker daemon is not running"
 
-printf '\n  %s2. Devcontainer%s\n' "$C_BOLD" "$C_RESET"
-info "   Same base as (1) plus the supabase CLI and editor tooling, wired up as"
-info "   .devcontainer/ rather than a published image."
+REF="$IMAGE:$TAG"
 
-printf '\n  %s3. Something else entirely%s\n' "$C_BOLD" "$C_RESET"
-info "   e.g. pinning the local Supabase stack — but 'supabase start' already"
-info "   manages its own containers, so this would duplicate the CLI."
+heading "Building $REF"
+info "context: $REPO_ROOT (see .dockerignore — the image carries no repo sources)"
+[ -n "$PLATFORM" ] && info "platform: $PLATFORM"
 
-heading "Note on registries"
+ARGS=(build -f "$REPO_ROOT/docker/Dockerfile" -t "$REF")
+[ -n "$PLATFORM" ] && ARGS+=(--platform "$PLATFORM")
+ARGS+=("$REPO_ROOT")
 
-info "ghcr.io is a container registry: the npm packages cannot be published"
-info "there. @exegia/auth-ui and @exegia/plugin-supabase-auth already publish to"
-info "GitHub Packages (npm.pkg.github.com) via publishConfig — see 'make pack'."
+docker "${ARGS[@]}"
+ok "built $REF"
 
+# The Dockerfile already runs this check at build time; repeating it against the
+# finished image catches anything a later layer broke.
+if [ "$VERIFY" -eq 1 ]; then
+  heading "Toolchain"
+  docker run --rm "$REF" bash -lc '
+    set -e
+    printf "  rust      %s\n" "$(rustc --version)"
+    printf "  cargo     %s\n" "$(cargo --version)"
+    printf "  clippy    %s\n" "$(cargo clippy --version)"
+    printf "  rustfmt   %s\n" "$(cargo fmt --version)"
+    printf "  bun       %s\n" "$(bun --version)"
+    printf "  node      %s\n" "$(node --version)"
+    printf "  supabase  %s\n" "$(supabase --version)"
+    pkg-config --exists webkit2gtk-4.1 && printf "  webkit2gtk-4.1 present\n"
+  '
+  ok "toolchain verified"
+fi
+
+if [ "$SHELL_IN" -eq 1 ]; then
+  heading "Shell"
+  info "repo mounted at /work"
+  exec docker run --rm -it -v "$REPO_ROOT:/work" -w /work "$REF" bash
+fi
+
+heading "Next"
+info "poke around:   ./scripts/build-docker.sh --shell"
+info "publish:       push to dev/next/main — .github/workflows/docker.yml does it"
 echo ""
-die "choose a reading above, then implement scripts/build-docker.sh"
