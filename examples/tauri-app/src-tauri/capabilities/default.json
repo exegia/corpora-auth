@@ -1,13 +1,24 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capabilities for the main window of the example app",
+  "description": "Capabilities for the picker window and every auth-method child window",
   "windows": [
-    "main"
+    "main",
+    "auth-*"
   ],
   "permissions": [
     "core:default",
     "mcp-bridge:default",
+
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:window:allow-minimize",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-is-minimized",
+
     "supabase-auth:default",
     "supabase-auth:allow-reset-password-for-email",
     "supabase-auth:allow-update-user",

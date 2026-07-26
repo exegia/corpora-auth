@@ -11,6 +11,11 @@ import { AuthErrorAlert } from "./internal";
 export interface PasskeySignInProps {
   /** Called when a passkey sign-in completes with a session. */
   onSignedIn?: (session: Session) => void;
+  /**
+   * See `SignInFormProps.onError`. Fires alongside the inline alert. Note a
+   * cancelled OS prompt is NOT an error and never reaches this callback.
+   */
+  onError?: (error: AuthError) => void;
   /** Button label. Defaults to "Sign in with a passkey". */
   label?: string;
   errorMessages?: ErrorMessageOverrides;
@@ -29,6 +34,7 @@ export interface PasskeySignInProps {
  */
 export function PasskeySignIn({
   onSignedIn,
+  onError,
   label = "Sign in with a passkey",
   errorMessages,
   className,
@@ -47,6 +53,7 @@ export function PasskeySignIn({
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
+      onError?.(result.error);
       return;
     }
     // Cancelled: silent return to idle — not an error (SC-003).

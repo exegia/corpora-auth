@@ -68,6 +68,13 @@ make -C examples/tauri-app mcp-shot     # screenshot into .mcp-artifacts/
 
 `ipc-execute-command` only reaches the bridge's own commands; for the app's Rust commands go through `./scripts/mcp.sh exec "window.__TAURI__.core.invoke('whoami_from_rust')"`.
 
+**The app is multi-window, so every CLI call needs `--window-id`.** `main` is the method picker; each method opens `auth-<id>` (see `src/lib/methods.ts`) and minimizes the picker. Without the flag you drive whichever window is default and silently assert against the wrong DOM. `manage-window --action list --json` is the ground truth — its `--action` only accepts `list`, `info`, `resize`, so close a window by evaluating JS in it rather than looking for a close action. `./scripts/mcp.sh` has no passthrough for arbitrary subcommands; call the CLI directly (`npx --yes -p @hypothesi/tauri-mcp-cli@0.12.0 tauri-mcp …`, the package name `scripts/lib.sh` pins).
+
+Two example-app behaviours that surprise you while testing:
+
+- **Quitting signs the user out**, via `RunEvent::ExitRequested` in `src-tauri/src/lib.rs`. So the app can never start signed in, and the old "session restored from a previous launch" demo is gone with `App.tsx`. The handler vetoes the first exit, signs out on the async runtime, then exits — deliberately *not* `block_on`, which can sit behind an in-flight refresh holding `AuthCore`'s mutex.
+- **One bundle serves every window**, routed on `getCurrentWindow().label` in `main.tsx`. A new method needs an entry in `METHODS` *and* to fall under the `auth-*` glob in `src-tauri/capabilities/default.json` — a label outside that glob gets zero capabilities, and every auth command in it fails with a non-`AuthError` rejection.
+
 ## Architecture
 
 ### Rust: one writer, three boundaries

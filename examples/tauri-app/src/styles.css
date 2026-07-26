@@ -1,2 +1,123 @@
 @import "tailwindcss";
 @import "@exegia/auth-ui/styles.css";
+
+/*
+ * Palette for the example app.
+ *
+ * `@exegia/auth-ui` is deliberately unopinionated about colour: its stylesheet
+ * only defines the four semantic accents (destructive/success/warning/info)
+ * and leaves the surface tokens — background, card, muted, border, primary… —
+ * to the host, shadcn-style. Nothing here is kit-specific; any consumer needs
+ * an equivalent block or the blocks render unstyled.
+ *
+ * Everything is built from Tailwind's `neutral` ramp so the greys stay
+ * consistent: the page sits on neutral-100 and cards lift off it in white,
+ * which inverts in dark mode (near-black page, lighter cards).
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  /* The kit maps --color-destructive-foreground but not the base colour, so
+     without this `bg-destructive/10` — the light error tint — cannot compose. */
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  color-scheme: light;
+
+  --background: var(--color-neutral-100);
+  --foreground: var(--color-neutral-900);
+
+  --card: #ffffff;
+  --card-foreground: var(--color-neutral-900);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-neutral-900);
+
+  --primary: var(--color-neutral-900);
+  --primary-foreground: var(--color-neutral-50);
+  --secondary: var(--color-neutral-200);
+  --secondary-foreground: var(--color-neutral-900);
+
+  --muted: var(--color-neutral-200);
+  --muted-foreground: var(--color-neutral-500);
+  --accent: var(--color-neutral-200);
+  --accent-foreground: var(--color-neutral-900);
+
+  --destructive: var(--color-red-600);
+
+  --border: var(--color-neutral-200);
+  /* Inputs stay white against the neutral-100 page so fields read as
+     surfaces rather than dents. */
+  --input: #ffffff;
+  --ring: var(--color-neutral-400);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: var(--color-neutral-950);
+  --foreground: var(--color-neutral-50);
+
+  --card: var(--color-neutral-900);
+  --card-foreground: var(--color-neutral-50);
+  --popover: var(--color-neutral-900);
+  --popover-foreground: var(--color-neutral-50);
+
+  --primary: var(--color-neutral-50);
+  --primary-foreground: var(--color-neutral-900);
+  --secondary: var(--color-neutral-800);
+  --secondary-foreground: var(--color-neutral-50);
+
+  --muted: var(--color-neutral-800);
+  --muted-foreground: var(--color-neutral-400);
+  --accent: var(--color-neutral-800);
+  --accent-foreground: var(--color-neutral-50);
+
+  /* Lighter than the light-mode red: a 600 on a near-black page fails
+     contrast and reads brown. */
+  --destructive: var(--color-red-500);
+
+  --border: var(--color-neutral-800);
+  --input: var(--color-neutral-800);
+  --ring: var(--color-neutral-600);
+}
+
+@layer base {
+  /*
+   * Tailwind v4 dropped the v3 default of `border-color: theme(colors.gray.200)`
+   * — a bare `border` utility now paints in `currentColor`. Every card in the
+   * kit and this app uses bare `border`, so without this they outline in the
+   * text colour: hard black in light mode, near-white in dark. Restoring the
+   * default is what makes `--border` actually mean anything.
+   */
+  *,
+  ::after,
+  ::before {
+    border-color: var(--border);
+  }
+}
+
+/* The window itself, so there is no white flash behind a dark page. */
+html,
+body,
+#root {
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+}
