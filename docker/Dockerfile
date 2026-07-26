@@ -10,6 +10,13 @@
 # Base is ubuntu:24.04 to match the ubuntu-24.04 runner image.
 FROM ubuntu:24.04
 
+# GitHub links a GHCR package to its repository via this label, which is what
+# makes the package inherit the repo's access and show up on the repo page.
+# Without it the package lands unlinked and has to be wired up by hand.
+LABEL org.opencontainers.image.source="https://github.com/exegia/corpora-auth" \
+      org.opencontainers.image.description="Linux build/test toolchain for tauri-plugin-supabase-auth" \
+      org.opencontainers.image.licenses="MIT OR Apache-2.0"
+
 # Pinned deliberately: the point of the image is that everyone gets the same
 # toolchain. bun tracks package.json's packageManager field.
 ARG RUST_VERSION=stable
