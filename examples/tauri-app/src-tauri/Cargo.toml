@@ -17,4 +17,9 @@ tauri-plugin-supabase-auth = { path = "../../.." }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# Lets `make dev-mcp` + the tauri-mcp CLI drive this app (screenshots, DOM
+# queries, IPC capture). Registered only under debug_assertions in lib.rs, so
+# release builds never start the bridge's WebSocket server.
+tauri-plugin-mcp-bridge = "0.11"
+
 [workspace]

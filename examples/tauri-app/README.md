@@ -6,7 +6,7 @@ Runnable Tauri v2 app demonstrating `tauri-plugin-supabase-auth` and the
 ## Prerequisites
 
 - Rust + Tauri v2 system prerequisites (<https://v2.tauri.app/start/prerequisites/>)
-- Node 20+, pnpm 9
+- Bun 1.3+
 - A Supabase project. Easiest: the local stack —
 
   ```bash
@@ -17,9 +17,33 @@ Runnable Tauri v2 app demonstrating `tauri-plugin-supabase-auth` and the
 ## Run
 
 ```bash
-pnpm install                    # repo root
-pnpm --filter tauri-app tauri dev
+make setup          # toolchain preflight + bun install (idempotent)
+make supabase-up    # start the local auth stack
+make dev            # run the app
 ```
+
+`make` on its own lists every target. Everything is a thin wrapper over the
+underlying commands, so the manual path still works:
+
+```bash
+bun install                     # repo root
+cd examples/tauri-app && bun run tauri dev
+```
+
+Useful targets:
+
+| Target | What it does |
+|---|---|
+| `make doctor` | Toolchain, workspace, Supabase stack, port and MCP diagnostics |
+| `make supabase-up` / `down` / `restart` / `status` | Local stack lifecycle (config lives at the repo root) |
+| `make supabase-flags` | Reports the `config.toml` auth flags the walkthroughs below need |
+| `make mail` | Opens the local mailbox for magic links, OTP and recovery codes |
+| `make check` | `tsc --noEmit` + `cargo fmt --check` + clippy |
+| `make test` / `make test-e2e` | Workspace unit tests / live-stack Rust E2E (gated on the stack being up; `SUPABASE_E2E_URL` and `SUPABASE_E2E_KEY` are read from `supabase status` unless you set them) |
+| `make clean` / `distclean` | Drop build output / also drop `node_modules` |
+
+The example's `src-tauri` is its own Cargo workspace with its own `Cargo.lock`,
+so `make lint` and `make clean` run there rather than at the repo root.
 
 The plugin config lives in `src-tauri/tauri.conf.json` under
 `plugins.supabase-auth` and defaults to the local stack
@@ -78,3 +102,43 @@ and register again: the flow shows the waiting step — grab the code from
 the local mailbox (<http://127.0.0.1:54324>) and enter it, or click the
 emailed link and watch the flow advance on its own (it silently retries
 sign-in every 5 s).
+
+## Driving the app from an agent (tauri-mcp)
+
+The app ships with [`tauri-plugin-mcp-bridge`](https://crates.io/crates/tauri-plugin-mcp-bridge)
+so the [`tauri-mcp` CLI](https://www.npmjs.com/package/@hypothesi/tauri-mcp-cli)
+can screenshot the webview, query the DOM and capture IPC traffic — useful for
+agent-driven QA of the auth flows.
+
+```bash
+make dev-mcp        # terminal 1: dev mode with the bridge reachable
+make mcp-start      # terminal 2: attach a driver session (asserts connected:true)
+make mcp-shot       # screenshot into .mcp-artifacts/
+make mcp-logs       # webview console log
+make mcp-stop
+```
+
+`make mcp-doctor` checks every prerequisite individually and names the one
+that is missing. `make mcp-install` puts the CLI on your `PATH`; without it
+the scripts fall back to `npx`, which is slower but works.
+
+Three details worth knowing:
+
+- The bridge plugin is registered under `#[cfg(debug_assertions)]` and bound
+  to `127.0.0.1`, so release builds never start it and nothing on the network
+  can drive the app.
+- `withGlobalTauri` (which exposes `window.__TAURI__`) is **off** in the
+  committed `tauri.conf.json`. `make dev-mcp` layers it on for that run only
+  via `src-tauri/tauri.mcp.conf.json`; plain `make dev` and `make build-app`
+  are unaffected.
+- `MCP_PORT` moves both halves at once — `make dev-mcp MCP_PORT=9225` passes it
+  to the bridge as its base port and `make mcp-start MCP_PORT=9225` points the
+  CLI at the same place. The bridge scans upward from its base port, so if the
+  port is taken it lands on the next one and `make mcp-doctor` says so.
+
+To reach the app's own Rust commands, go through the webview rather than
+`ipc-execute-command` (which only dispatches the bridge's own commands):
+
+```bash
+./scripts/mcp.sh exec "window.__TAURI__.core.invoke('whoami_from_rust').then(r => JSON.stringify(r))"
+```

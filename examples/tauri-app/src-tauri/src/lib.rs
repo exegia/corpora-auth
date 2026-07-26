@@ -8,7 +8,30 @@ async fn whoami_from_rust(app: tauri::AppHandle) -> Option<String> {
 }
 
 pub fn run() {
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default();
+
+    // Automation bridge for `make dev-mcp` / the tauri-mcp CLI. Debug-only, and
+    // bound to loopback so nothing on the network can drive the app.
+    //
+    // The plugin scans upward from the base port, so if 9223 is taken it lands
+    // on 9224 and the CLI must be pointed there too; `make dev-mcp MCP_PORT=N`
+    // sets MCP_BRIDGE_PORT to keep both sides in sync.
+    #[cfg(debug_assertions)]
+    {
+        let base_port = std::env::var("MCP_BRIDGE_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(9223);
+        builder = builder.plugin(
+            tauri_plugin_mcp_bridge::Builder::new()
+                .bind_address("127.0.0.1")
+                .base_port(base_port)
+                .build(),
+        );
+    }
+
+    builder
         .plugin(tauri_plugin_supabase_auth::init())
         .invoke_handler(tauri::generate_handler![whoami_from_rust])
         .setup(|app| {

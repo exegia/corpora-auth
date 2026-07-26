@@ -22,3 +22,11 @@ export {
   LinkedAccounts,
   type LinkedAccountsProps,
 } from "./linked-accounts";
+export {
+  PasskeySignIn,
+  type PasskeySignInProps,
+} from "./passkey-sign-in";
+export {
+  PasskeyManager,
+  type PasskeyManagerProps,
+} from "./passkey-manager";

@@ -17,6 +17,11 @@ import type {
   AuthChangePayload,
   AuthError,
   Identity,
+  Passkey,
+  PasskeyCapability,
+  PasskeyChallenge,
+  PasskeyRegistrationResult,
+  PasskeySignInResult,
   Session,
   SignUpResult,
   User,
@@ -37,6 +42,9 @@ const ERROR_KINDS = new Set([
   "permissionDenied",
   "identityAlreadyLinked",
   "lastSignInMethod",
+  "passkeyChallengeExpired",
+  "passkeyVerificationFailed",
+  "passkeyUnsupported",
   "unknown",
 ]);
 
@@ -82,6 +90,23 @@ export const onAuthStateChange =
   vi.fn<
     (cb: (payload: AuthChangePayload) => void) => Promise<() => void>
   >();
+export const getPasskeyCapability =
+  vi.fn<() => Promise<PasskeyCapability>>();
+export const registerPasskey =
+  vi.fn<() => Promise<PasskeyRegistrationResult>>();
+export const signInWithPasskey =
+  vi.fn<() => Promise<PasskeySignInResult>>();
+export const listPasskeys = vi.fn<() => Promise<Passkey[]>>();
+export const renamePasskey = vi.fn<(opts: unknown) => Promise<Passkey>>();
+export const deletePasskey = vi.fn<(opts: unknown) => Promise<void>>();
+export const passkeyRegistrationOptions =
+  vi.fn<() => Promise<PasskeyChallenge>>();
+export const passkeyRegistrationVerify =
+  vi.fn<(opts: unknown) => Promise<Passkey>>();
+export const passkeyAuthenticationOptions =
+  vi.fn<() => Promise<PasskeyChallenge>>();
+export const passkeyAuthenticationVerify =
+  vi.fn<(opts: unknown) => Promise<Session>>();
 
 function installDefaults(): void {
   getSession.mockResolvedValue(null);
@@ -90,6 +115,9 @@ function installDefaults(): void {
   cancelOAuthFlow.mockResolvedValue(undefined);
   signOut.mockResolvedValue(undefined);
   resetPasswordForEmail.mockResolvedValue(undefined);
+  getPasskeyCapability.mockResolvedValue({ usable: true });
+  listPasskeys.mockResolvedValue([]);
+  deletePasskey.mockResolvedValue(undefined);
   onAuthStateChange.mockImplementation(async (cb) => {
     listeners.add(cb);
     return () => {
@@ -118,6 +146,16 @@ export function resetAuthMocks(): void {
     linkIdentity,
     unlinkIdentity,
     onAuthStateChange,
+    getPasskeyCapability,
+    registerPasskey,
+    signInWithPasskey,
+    listPasskeys,
+    renamePasskey,
+    deletePasskey,
+    passkeyRegistrationOptions,
+    passkeyRegistrationVerify,
+    passkeyAuthenticationOptions,
+    passkeyAuthenticationVerify,
   ]) {
     fn.mockReset();
   }
@@ -198,6 +236,28 @@ export function testIdentity(
     createdAt: "2026-01-01T00:00:00Z",
     lastSignInAt: "2026-07-20T00:00:00Z",
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Passkey fixtures (feature 004)                                      */
+/* ------------------------------------------------------------------ */
+
+/** One passkey row. */
+export function testPasskey(
+  id = "passkey-1",
+  friendlyName: string | null = "iCloud Keychain",
+): Passkey {
+  return {
+    id,
+    friendlyName,
+    createdAt: "2026-07-01T00:00:00Z",
+    lastUsedAt: "2026-07-20T00:00:00Z",
+  };
+}
+
+/** Makes `getPasskeyCapability` report unusable with the given reason. */
+export function mockPasskeysUnavailable(reason = "unsupportedPlatform"): void {
+  getPasskeyCapability.mockResolvedValue({ usable: false, reason });
 }
 
 /**

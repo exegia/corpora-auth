@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-sign-in-with-passkey"
+description = "Enables the sign_in_with_passkey command without any pre-configured scope."
+commands.allow = ["sign_in_with_passkey"]
+
+[[permission]]
+identifier = "deny-sign-in-with-passkey"
+description = "Denies the sign_in_with_passkey command without any pre-configured scope."
+commands.deny = ["sign_in_with_passkey"]

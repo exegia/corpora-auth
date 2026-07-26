@@ -8,7 +8,14 @@ rust-version = "1.80"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/exegia/corpora-auth"
 links = "tauri-plugin-supabase-auth"
-exclude = ["/examples", "/ui", "/guest-js", "/node_modules", "/.github"]
+# Workspace-only material: everything a consumer of the crate never needs.
+# `make build:plugin` prints the resulting file list, so this stays honest.
+exclude = [
+  "/examples", "/ui", "/guest-js", "/node_modules", "/.github",
+  "/specs", "/.specify", "/.claude", "/scripts", "/supabase",
+  "/Makefile", "/package.json", "/bun.lock",
+  "/.prettierrc", "/.prettierignore", "/.gitguardian.yaml",
+]
 
 [dependencies]
 tauri = "2"
@@ -38,3 +45,14 @@ tauri = { version = "2", features = ["test"] }
 
 [lib]
 name = "tauri_plugin_supabase_auth"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6.2"
+dispatch2 = "0.3.1"
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", features = ["NSApplication", "NSWindow", "NSResponder"] }
+objc2-authentication-services = "0.3.2"
+objc2-foundation = { version = "0.3.2", features = ["NSString", "NSData", "NSError", "NSArray", "NSProcessInfo", "NSDictionary", "NSValue"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Networking_WindowsWebServices", "Win32_UI_WindowsAndMessaging", "Win32_System_LibraryLoader"] }

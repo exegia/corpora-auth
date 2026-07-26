@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.corpora.supabase-auth-example",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -34,6 +34,9 @@
       "oauth": {
         "callbackPorts": [43823, 43824, 43825],
         "flowTimeoutSecs": 300
+      },
+      "passkeys": {
+        "origin": "http://localhost:1420"
       }
     }
   }
