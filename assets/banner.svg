@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-label="tauri-plugin-supabase-auth — Supabase authentication for Tauri v2 desktop apps">
+  <title>tauri-plugin-supabase-auth</title>
+
+  <defs>
+    <!-- Base surface: near-black with a slight blue lift, so it reads on both
+         GitHub themes without needing a light/dark pair. -->
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A0E14"/>
+      <stop offset="1" stop-color="#0E1620"/>
+    </linearGradient>
+
+    <!-- Brand glows: Tauri cyan on the left, Supabase green on the right,
+         mirroring the order of the logo lockup above them. -->
+    <radialGradient id="glowCyan" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#24C8DB" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#24C8DB" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowGreen" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3ECF8E" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#3ECF8E" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- The Supabase mark is a single path, so the two-tone look comes from a
+         diagonal gradient rather than from separate shapes. -->
+    <linearGradient id="supa" x1="0" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#4EE6A0"/>
+      <stop offset="1" stop-color="#1F9E68"/>
+    </linearGradient>
+
+    <linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#24C8DB" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#3ECF8E" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFC131" stop-opacity="0"/>
+    </linearGradient>
+
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#FFFFFF" fill-opacity="0.05"/>
+    </pattern>
+
+    <clipPath id="round">
+      <rect width="1280" height="420" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <rect width="1280" height="420" fill="url(#surface)"/>
+    <rect width="1280" height="420" fill="url(#grid)"/>
+    <ellipse cx="250" cy="90" rx="560" ry="360" fill="url(#glowCyan)"/>
+    <ellipse cx="1040" cy="360" rx="560" ry="360" fill="url(#glowGreen)"/>
+    <!-- Top highlight: the 1px edge that keeps the card from looking flat. -->
+    <rect width="1280" height="1" fill="#FFFFFF" fill-opacity="0.10"/>
+  </g>
+
+  <!-- ── Logo lockup: Tauri + Supabase ──────────────────────────────────── -->
+  <!-- Both marks are 24-unit viewBoxes scaled 3x to 72px. -->
+  <g transform="translate(548 76) scale(3)">
+    <!-- Upper crescent + dot -->
+    <path fill="#FFC131" d="M13.912 0a8.72 8.72 0 0 0-8.308 6.139c1.05-.515 2.18-.845 3.342-.976 2.415-3.363 7.4-3.412 9.88-.097 2.48 3.315 1.025 8.084-2.883 9.45a6.131 6.131 0 0 1-.3 2.762 8.72 8.72 0 0 0 3.01-1.225A8.72 8.72 0 0 0 13.913 0z"/>
+    <path fill="#FFC131" d="M13.994 6.451a2.284 2.284 0 1 0-.15 4.566 2.284 2.284 0 0 0 .15-4.566z"/>
+    <!-- Lower crescent + dot -->
+    <path fill="#24C8DB" d="M8.365 6.721a8.72 8.72 0 0 0-3.031 1.235 8.72 8.72 0 1 0 13.06 9.9131 10.173 10.174 0 0 1-3.343.965 6.125 6.125 0 1 1-7.028-9.343 6.114 6.115 0 0 1 .342-2.772z"/>
+    <path fill="#24C8DB" d="M10.078 12.991a2.284 2.284 0 0 0-2.284 2.283 2.284 2.284 0 0 0 2.284 2.284 2.284 2.284 0 0 0 2.284-2.284 2.284 2.284 0 0 0-2.284-2.284z"/>
+  </g>
+
+  <!-- Plus: the whole point of the repo is Tauri *plus* Supabase. -->
+  <g fill="#556372">
+    <rect x="631" y="103" width="18" height="3" rx="1.5"/>
+    <rect x="638.5" y="95.5" width="3" height="18" rx="1.5"/>
+  </g>
+
+  <g transform="translate(660 76) scale(3)">
+    <path fill="url(#supa)" d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.653c1.093-1.375.113-3.403-1.645-3.403h-9.642z"/>
+  </g>
+
+  <rect x="530" y="176" width="220" height="1" fill="url(#rule)"/>
+
+  <!-- ── Wordmark ───────────────────────────────────────────────────────── -->
+  <text x="640" y="240" text-anchor="middle"
+        font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="58" font-weight="700" letter-spacing="-1.6" fill="#F2F6FA">tauri-plugin-supabase-auth</text>
+
+  <text x="640" y="278" text-anchor="middle"
+        font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="20" font-weight="400" letter-spacing="0.1" fill="#93A2B2">Complete Supabase authentication for Tauri v2 desktop apps — plus a ready-made React UI kit</text>
+
+  <!-- ── Capability chips ───────────────────────────────────────────────── -->
+  <!-- Text is centre-anchored inside each pill, so a small width mis-estimate
+       shifts padding rather than overflowing the pill. -->
+  <g font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="14" font-weight="500">
+    <g>
+      <rect x="322" y="318" width="118" height="32" rx="16" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.10"/>
+      <text x="381" y="338.5" text-anchor="middle" fill="#C6D2DE">OAuth (PKCE)</text>
+    </g>
+    <g>
+      <rect x="450" y="318" width="152" height="32" rx="16" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.10"/>
+      <text x="526" y="338.5" text-anchor="middle" fill="#C6D2DE">Magic links &amp; OTP</text>
+    </g>
+    <g>
+      <rect x="612" y="318" width="92" height="32" rx="16" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.10"/>
+      <text x="658" y="338.5" text-anchor="middle" fill="#C6D2DE">Passkeys</text>
+    </g>
+    <g>
+      <rect x="714" y="318" width="112" height="32" rx="16" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.10"/>
+      <text x="770" y="338.5" text-anchor="middle" fill="#C6D2DE">OS keychain</text>
+    </g>
+    <g>
+      <rect x="836" y="318" width="122" height="32" rx="16" fill="#FFFFFF" fill-opacity="0.06" stroke="#FFFFFF" stroke-opacity="0.10"/>
+      <text x="897" y="338.5" text-anchor="middle" fill="#C6D2DE">Auto-refresh</text>
+    </g>
+  </g>
+</svg>

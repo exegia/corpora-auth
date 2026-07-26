@@ -17,6 +17,11 @@ tauri-plugin-supabase-auth = { path = "../../.." }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# Hands a URL to the OS default browser for the error screen's "open Claude"
+# affordance. The `open` crate rather than a Tauri plugin: one function is all
+# this needs, and the plugin already depends on it for the OAuth round-trip.
+open = "5"
+
 # Lets `make dev-mcp` + the tauri-mcp CLI drive this app (screenshots, DOM
 # queries, IPC capture). Registered only under debug_assertions in lib.rs, so
 # release builds never start the bridge's WebSocket server.

@@ -160,7 +160,16 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# The three loopback entries are the plugin's OAuth callback: it binds the first
+# free port from `oauth.callbackPorts` and asks GoTrue to redirect there. These
+# are matched EXACTLY, so all three must be listed or the round-trip dies after
+# the provider consent screen with a redirect error rather than a plugin error.
+additional_redirect_urls = [
+  "https://127.0.0.1:3000",
+  "http://127.0.0.1:43823/callback",
+  "http://127.0.0.1:43824/callback",
+  "http://127.0.0.1:43825/callback",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -335,6 +344,27 @@ url = ""
 skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
+
+# The two providers the example app's picker offers. Both are off until you
+# supply credentials — flip `enabled` and export the secret, then restart the
+# stack (`supabase stop && supabase start`; config.toml is read only at boot).
+#
+# Register the OAuth app on the provider with the *provider-side* callback
+# pointing at GoTrue, NOT at the plugin's loopback port:
+#   http://127.0.0.1:54321/auth/v1/callback
+# GoTrue then redirects on to http://127.0.0.1:4382x/callback, which is why
+# those have to be in `additional_redirect_urls` above.
+[auth.external.github]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
+
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Required for local Google sign-in — the nonce cannot be verified over loopback.
+skip_nonce_check = true
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.

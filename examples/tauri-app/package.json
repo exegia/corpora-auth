@@ -11,6 +11,7 @@
     "test": "echo \"example app: see root bun run test:e2e (Rust lifecycle E2E)\""
   },
   "dependencies": {
+    "@base-ui/react": "^1.0.0",
     "@exegia/auth-ui": "workspace:*",
     "@exegia/plugin-supabase-auth": "workspace:*",
     "@tauri-apps/api": "^2.0.0",

@@ -9,6 +9,7 @@
       "name": "tauri-app",
       "version": "0.1.0",
       "dependencies": {
+        "@base-ui/react": "^1.0.0",
         "@exegia/auth-ui": "workspace:*",
         "@exegia/plugin-supabase-auth": "workspace:*",
         "@tauri-apps/api": "^2.0.0",

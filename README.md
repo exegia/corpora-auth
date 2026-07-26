@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🔐 tauri-plugin-supabase-auth
+<img src="assets/banner.png" width="900" alt="tauri-plugin-supabase-auth — complete Supabase authentication for Tauri v2 desktop apps, plus a ready-made React UI kit">
 
-**Complete Supabase authentication for Tauri v2 desktop apps** — plus a ready-made React auth UI kit.
+------------------------------------------------------
 
 [![CI](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#-license)
@@ -303,6 +303,63 @@ make -C examples/tauri-app dev
 ```
 
 The example wires every block to the local stack out of the box — see [examples/tauri-app](./examples/tauri-app).
+
+## 🔑 Configuration you must supply
+
+Email/password, magic links and one-time codes work against a fresh `make supabase-up` with no credentials at all. The rest need something only you can provide. **The example app's error screen links here by name** when a method fails for one of these reasons, so a missing secret reads as a setup step rather than a bug.
+
+Every value below lives in `supabase/config.toml` unless stated. That file is read **only at boot** — after any change, `supabase stop && supabase start`.
+
+### GitHub sign-in
+
+| What | Where to get it |
+|---|---|
+| Client ID + secret | [github.com/settings/developers](https://github.com/settings/developers) → **New OAuth App** |
+
+Set the OAuth app's **Authorization callback URL** to GoTrue, not to the plugin:
+
+```
+http://127.0.0.1:54321/auth/v1/callback
+```
+
+```bash
+export SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID=Ov23li...
+export SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET=...
+```
+
+then flip `enabled = true` under `[auth.external.github]`.
+
+### Google sign-in
+
+Same shape, from [console.cloud.google.com](https://console.cloud.google.com/apis/credentials) → **OAuth client ID** (type: Web application), same GoTrue callback URL, exported as `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` / `_SECRET`. `skip_nonce_check = true` is already set and is **required** for loopback sign-in — the nonce cannot be verified over a local redirect.
+
+> **Both providers depend on `additional_redirect_urls`.** The plugin binds the first free port from `oauth.callbackPorts` and asks GoTrue to redirect to `http://127.0.0.1:<port>/callback`. That list is matched *exactly*, so all three ports are pre-listed. Change `callbackPorts` and you must add the matching URLs, or the round-trip dies after the consent screen with a redirect error — and not as a plugin error, so it surfaces as an unstructured failure.
+
+### Account linking
+
+```toml
+[auth]
+enable_manual_linking = true
+```
+
+Off by default. Without it `<LinkedAccounts />` can list identities but cannot attach one.
+
+### Passkeys
+
+The server side is already configured — `[auth.passkey] enabled = true`, `rp_id = "localhost"`, and `rp_origins` covering the dev server. What you supply is a **signed build**, and only on macOS:
+
+| Platform | What you need |
+|---|---|
+| **Windows** | Nothing. Windows Hello uses `plugins.supabase-auth.passkeys.origin` from `tauri.conf.json` and works against the committed config. |
+| **macOS** | An Apple Developer account, a provisioning profile whose App ID carries the **Associated Domains** capability, and an [AASA file](https://developer.apple.com/documentation/xcode/supporting-associated-domains) served over HTTPS at `https://<rp-id>/.well-known/apple-app-site-association`. |
+| **Linux** | Not supported — no built-in ceremony. Supply your own via `PluginBuilder::ceremony_provider`. |
+
+Two macOS traps worth knowing before you start:
+
+- **`rp_id` cannot stay `localhost`.** An associated domain must be a real domain you control, so `rp_id` and `rp_origins` both have to move to it. Changing `rp_id` **invalidates every enrolled passkey** — cheap on a throwaway local project, permanent in practice on a real one.
+- **An unentitled build reports passkeys as usable.** `availability()` keys purely on the macOS 13+ version floor, so the example still shows the Passkey card and the entitlement failure only surfaces at ceremony time. A build that looks fine can fail at the prompt.
+
+Registration always requires an authenticated user — a passkey is bound to an existing account, so there is no passkey-first sign-up. In the example: sign in another way, then **Manage this account → Passkeys**.
 
 ## 🗺️ Roadmap
 

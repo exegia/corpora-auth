@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Provider, Session } from "@exegia/plugin-supabase-auth";
+import type { AuthError, Provider, Session } from "@exegia/plugin-supabase-auth";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import type { ErrorMessageOverrides } from "@/lib/error-messages";
@@ -31,6 +31,8 @@ export function providerLabel(provider: Provider): string {
 export interface SocialButtonsProps {
   providers: Provider[];
   onSuccess?: (session: Session) => void;
+  /** See `SignInFormProps.onError`. Fires alongside the inline alert. */
+  onError?: (error: AuthError) => void;
   errorMessages?: ErrorMessageOverrides;
   className?: string;
 }
@@ -38,6 +40,7 @@ export interface SocialButtonsProps {
 export function SocialButtons({
   providers,
   onSuccess,
+  onError,
   errorMessages,
   className,
 }: SocialButtonsProps): React.ReactElement {
@@ -60,6 +63,7 @@ export function SocialButtons({
     // oauthFlowInterrupted (cancel/abandon) and all other kinds leave the
     // buttons enabled so the user can retry.
     setStatus({ kind: "error", error: result.error });
+    onError?.(result.error);
   }
 
   async function cancel(): Promise<void> {
