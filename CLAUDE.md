@@ -45,6 +45,17 @@ Verify tooling changes against a **clean** tree — `make clean && make setup &&
 
 `docker/Dockerfile` reproduces the Linux CI toolchain (Rust + webkit2gtk + bun + node + supabase CLI) so the Linux build is reachable from macOS: `make build:docker` builds and verifies it, `make docker:shell` drops you into it with the repo mounted. `.github/workflows/docker.yml` publishes it to GHCR, and only when `docker/**` changes.
 
+**The image is for local use — CI runs on `runs-on`, not in it.** Converting the `rust` job to `container:` does work: the package is `internal` and linked to this repo, so `GITHUB_TOKEN` with `packages: read` pulls it, and `container:` needs an explicit `credentials:` block because it does not use the token implicitly. It was reverted on timing, but the margin is much narrower than the cold-cache runs suggest:
+
+| config | `rust` job |
+|---|---|
+| `runs-on` + warm cache (what CI does) | 75–106s |
+| container + warm cache | 113s |
+| container, no cache | 278s |
+| container + cold cache | 427s |
+
+Warm-for-warm the container costs ~10–30%, not the 3–4× the cold runs imply — the image saves the apt/rustup setup but starts from an empty `target/` unless the cache restores. **Compare like for like when re-measuring:** Actions caches are branch-scoped with fallback only to the default branch, so a fresh branch pays a cold run whichever way the job is configured. The case for converting was toolchain parity with local dev, not speed.
+
 ## Driving the example app
 
 The example registers `tauri-plugin-mcp-bridge`, so the `tauri-mcp` CLI can screenshot the webview, query the DOM and evaluate JS — use it to verify UI changes yourself.
