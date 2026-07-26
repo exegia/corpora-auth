@@ -111,11 +111,18 @@ impl<R: Runtime> SupabaseAuth<R> {
         scopes: Option<Vec<String>>,
     ) -> Result<Session> {
         let cancel = self.core.begin_oauth(provider).await?;
-        let result = crate::oauth::run_flow(&self.core, provider, scopes, cancel, |url| {
-            open::that_detached(&url).map_err(|e| {
-                crate::error::Error::oauth_interrupted(format!("failed to open browser: {e}"))
-            })
-        })
+        let result = crate::oauth::run_flow(
+            &self.core,
+            provider,
+            scopes,
+            crate::oauth::FlowKind::SignIn,
+            cancel,
+            |url| {
+                open::that_detached(&url).map_err(|e| {
+                    crate::error::Error::oauth_interrupted(format!("failed to open browser: {e}"))
+                })
+            },
+        )
         .await;
         match result {
             Ok(session) => self.core.complete_oauth(session).await,
@@ -128,5 +135,115 @@ impl<R: Runtime> SupabaseAuth<R> {
 
     pub async fn cancel_oauth_flow(&self) {
         self.core.abort_oauth().await;
+    }
+
+    // -- identity management (feature 003) -----------------------------------
+
+    pub async fn identities(&self) -> Result<Vec<crate::models::Identity>> {
+        self.core.get_identities().await
+    }
+
+    /// Links a provider identity to the current account: authenticated
+    /// authorize → system browser → loopback → PKCE exchange (same user).
+    /// Returns the refreshed identity list.
+    pub async fn link_identity(
+        &self,
+        provider: &str,
+        scopes: Option<Vec<String>>,
+    ) -> Result<Vec<crate::models::Identity>> {
+        let (access_token, cancel) = self.core.begin_link().await?;
+        let result = crate::oauth::run_flow(
+            &self.core,
+            provider,
+            scopes,
+            crate::oauth::FlowKind::Link { access_token },
+            cancel,
+            |url| {
+                open::that_detached(&url).map_err(|e| {
+                    crate::error::Error::oauth_interrupted(format!("failed to open browser: {e}"))
+                })
+            },
+        )
+        .await;
+        match result {
+            Ok(session) => {
+                self.core.complete_link(session).await?;
+                self.core.get_identities().await
+            }
+            Err(e) => {
+                // The account and current session are untouched (FR-006);
+                // only the transient flow state is cleared.
+                self.core.abort_link().await;
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn unlink_identity(&self, identity_id: &str) -> Result<Vec<crate::models::Identity>> {
+        self.core.unlink_identity(identity_id).await
+    }
+
+    // -- passkeys (feature 004) -----------------------------------------------
+
+    pub fn passkey_capability(&self) -> crate::models::PasskeyCapability {
+        self.core.passkey_capability()
+    }
+
+    /// Full registration round-trip: challenge → OS prompt → verify.
+    pub async fn register_passkey(&self) -> Result<crate::models::PasskeyRegistrationResult> {
+        self.core.register_passkey().await
+    }
+
+    /// Full discoverable sign-in round-trip. Rust callers get the full
+    /// session inside the result via `session()` afterwards; the result
+    /// itself carries the sanitized shape.
+    pub async fn sign_in_with_passkey(&self) -> Result<crate::models::PasskeySignInResult> {
+        self.core.sign_in_with_passkey().await
+    }
+
+    pub async fn list_passkeys(&self) -> Result<Vec<crate::models::Passkey>> {
+        self.core.list_passkeys().await
+    }
+
+    pub async fn rename_passkey(
+        &self,
+        passkey_id: &str,
+        friendly_name: &str,
+    ) -> Result<crate::models::Passkey> {
+        self.core.rename_passkey(passkey_id, friendly_name).await
+    }
+
+    pub async fn delete_passkey(&self, passkey_id: &str) -> Result<()> {
+        self.core.delete_passkey(passkey_id).await
+    }
+
+    // Two-step surface (app-supplied ceremony, US4).
+
+    pub async fn passkey_registration_options(&self) -> Result<crate::models::PasskeyChallenge> {
+        self.core.passkey_registration_options().await
+    }
+
+    pub async fn passkey_registration_verify(
+        &self,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<crate::models::Passkey> {
+        self.core
+            .passkey_registration_verify(challenge_id, credential)
+            .await
+    }
+
+    pub async fn passkey_authentication_options(&self) -> Result<crate::models::PasskeyChallenge> {
+        self.core.passkey_authentication_options().await
+    }
+
+    pub async fn passkey_authentication_verify(
+        &self,
+        challenge_id: &str,
+        credential: &serde_json::Value,
+    ) -> Result<Session> {
+        self.core
+            .passkey_authentication_verify(challenge_id, credential)
+            .await
     }
 }

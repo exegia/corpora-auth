@@ -34,6 +34,7 @@ fn build_core(url: &str, key: &str, store: Arc<MemoryStore>) -> Arc<AuthCore> {
         refresh_buffer_secs: 60,
         callback_ports: vec![43823],
         flow_timeout_secs: 60,
+        passkey_origin: None,
     };
     let engine = AuthEngine::new(url, key).unwrap();
     Arc::new(AuthCore::new(engine, config, Box::new(SharedStore(store))))
@@ -71,6 +72,31 @@ async fn full_lifecycle_against_live_stack() {
     core2.restore().await;
     let restored = core2.session().await.expect("restart-restore (SC-004)");
     assert_eq!(restored.user.email.as_deref(), Some(email.as_str()));
+
+    // Identity management smoke (feature 003): an email registration
+    // carries exactly one identity, provider "email".
+    let identities = core2.get_identities().await.unwrap();
+    assert_eq!(identities.len(), 1, "email signup yields one identity");
+    assert_eq!(identities[0].provider, "email");
+
+    // Passkey management smoke (feature 004): with passkeys enabled the list
+    // is empty for a fresh user; with them disabled the error is the
+    // actionable configuration kind (FR-010). Ceremony-dependent flows are
+    // covered by the quickstart native smoke checklist.
+    match core2.list_passkeys().await {
+        Ok(passkeys) => assert!(passkeys.is_empty(), "fresh user has no passkeys"),
+        Err(e) => {
+            assert_eq!(
+                e.kind,
+                tauri_plugin_supabase_auth::error::ErrorKind::Configuration,
+                "unexpected passkey list failure: {e:?}"
+            );
+            eprintln!(
+                "passkeys disabled on this stack; smoke skipped: {}",
+                e.message
+            );
+        }
+    }
 
     // Refresh works against the live stack.
     let refreshed = core2.refresh().await.unwrap();

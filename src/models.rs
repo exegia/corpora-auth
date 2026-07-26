@@ -130,6 +130,84 @@ pub enum AuthChangeEvent {
     TokenRefreshed,
     #[serde(rename = "PASSWORD_RECOVERY")]
     PasswordRecovery,
+    #[serde(rename = "IDENTITIES_CHANGED")]
+    IdentitiesChanged,
+    #[serde(rename = "PASSKEYS_CHANGED")]
+    PasskeysChanged,
+}
+
+/// One sign-in method attached to the account (feature 003). Mapped from the
+/// GoTrue identity object; note GoTrue's confusing wire naming — its `id` is
+/// the provider-specific subject, while `identity_id` is the row key used for
+/// unlinking. The raw `identity_data` claims blob is deliberately not exposed.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Identity {
+    pub identity_id: String,
+    pub provider_subject: String,
+    pub provider: String,
+    pub email: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub last_sign_in_at: Option<DateTime<Utc>>,
+}
+
+/// A passkey registered on the account (feature 004). Mapped from GoTrue's
+/// `PasskeyListItem`; the server never exposes credential/public-key material.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Passkey {
+    pub id: String,
+    /// Auto-derived from the authenticator AAGUID at registration; user-set
+    /// afterwards via rename (1–120 chars).
+    pub friendly_name: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub last_used_at: Option<DateTime<Utc>>,
+}
+
+/// Whether passkey prompts can run on this device (FR-008). Reflects ceremony
+/// availability only — project configuration problems surface as
+/// `configuration` errors at call time (research R7).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyCapability {
+    pub usable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// Challenge material for the two-step (app-supplied ceremony) surface.
+/// `options` is the server's WebAuthn options JSON, passed through verbatim.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyChallenge {
+    pub challenge_id: String,
+    pub options: serde_json::Value,
+    /// Unix seconds; the server consumes the challenge exactly once.
+    pub expires_at: i64,
+}
+
+/// User cancellation of the OS prompt is a status, never an error (FR-009).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum PasskeyFlowStatus {
+    Completed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyRegistrationResult {
+    pub status: PasskeyFlowStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub passkey: Option<Passkey>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeySignInResult {
+    pub status: PasskeyFlowStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session: Option<SanitizedSession>,
 }
 
 /// Payload of the `supabase-auth://auth-state-changed` event.

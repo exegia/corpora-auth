@@ -1,0 +1,5 @@
+# The toolchain image contains no repo sources, so the build context should be
+# near-empty. Without this, `docker build .` streams target/ (~8.5G) and every
+# node_modules to the daemon and looks like a hang.
+*
+!docker/

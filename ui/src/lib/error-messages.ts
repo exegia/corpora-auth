@@ -26,6 +26,17 @@ export const defaultErrorMessages: Record<AuthErrorKind, string> = {
   rateLimited: "Too many attempts. Please wait a moment and try again.",
   permissionDenied:
     "This action isn't permitted. Please contact the app developer.",
+  // Non-enumerating: never reveals which account the identity belongs to.
+  identityAlreadyLinked:
+    "That sign-in method is already connected to a different account. Your current account is unchanged.",
+  lastSignInMethod:
+    "This is the only way to sign in to this account, so it can't be disconnected.",
+  passkeyChallengeExpired:
+    "That passkey attempt expired. Please try again.",
+  passkeyVerificationFailed:
+    "This passkey couldn't be verified. If it was removed from your account, delete it from this device and register a new one.",
+  passkeyUnsupported:
+    "Passkeys aren't available on this device.",
   unknown: "Something went wrong. Please try again.",
 };
 

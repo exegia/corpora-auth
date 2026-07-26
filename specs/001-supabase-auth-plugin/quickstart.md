@@ -6,16 +6,16 @@ Runnable scenarios proving the feature end to end. Contracts: [plugin-api.md](./
 
 ## Prerequisites
 
-- Rust 1.80+, Node 20+ (pnpm), Tauri v2 CLI, platform webview deps (`https://v2.tauri.app/start/prerequisites/`)
+- Rust 1.80+, Bun 1.3+, Tauri v2 CLI, platform webview deps (`https://v2.tauri.app/start/prerequisites/`)
 - Supabase CLI (`supabase start` local stack) **or** a disposable cloud project with email/password + email OTP enabled and at least one OAuth provider (e.g. GitHub) configured with redirect `http://127.0.0.1:43823`
 - Env for the example app: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` (injected into `examples/tauri-app/src-tauri/tauri.conf.json` plugin config)
 
 ## Setup
 
 ```bash
-pnpm install                 # workspaces: guest-js, ui, examples/tauri-app
+bun install                  # workspaces: guest-js, ui, examples/tauri-app
 cargo build                  # plugin crate
-pnpm --filter tauri-app tauri dev   # launches the example app
+(cd examples/tauri-app && bun run tauri dev)  # launches the example app
 ```
 
 Expected: app starts; with missing/malformed plugin config it must instead **fail at startup** naming the offending field (FR-012 check — try clearing `url` once).
@@ -42,7 +42,7 @@ In the running example app (SignInForm/SignUpForm blocks):
 3. Keyboard-only walkthrough of every block: all controls reachable, labeled, submittable via Enter.
 
 ```bash
-pnpm --filter ui test        # Vitest + Testing Library + vitest-axe (SC-005: zero critical violations)
+bun run --filter @exegia/auth-ui test  # Vitest + Testing Library + vitest-axe (SC-005: zero critical violations)
 ```
 
 ## Scenario 4 — Recovery & account management (US4, P3)
@@ -63,8 +63,8 @@ pnpm --filter ui test        # Vitest + Testing Library + vitest-axe (SC-005: ze
 
 ```bash
 cargo test                                   # unit + wiremock GoTrue contract tests (errors, PKCE, races, corrupt sessions)
-pnpm --filter ui test                        # block states + a11y
-pnpm test:e2e                                # full lifecycle vs `supabase start` stack (SC-006) — also runs in CI
+bun run --filter @exegia/auth-ui test                  # block states + a11y
+bun run test:e2e                              # full lifecycle vs `supabase start` stack (SC-006) — also runs in CI
 ```
 
 **Pass criteria**: every scenario resolves to a definitive success or a categorized, user-presentable error (SC-003); lifecycle E2E green in CI (SC-006).

@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ForgotPasswordForm,
+  LinkedAccounts,
   OnboardingFlow,
   OtpForm,
+  PasskeyManager,
+  PasskeySignIn,
   SignInForm,
   UpdatePasswordForm,
   useOnboarding,
@@ -140,6 +143,18 @@ export default function App() {
             ask Rust
           </button>
         </p>
+        <section className="space-y-2" aria-labelledby="linked-accounts-heading">
+          <h2 className="font-semibold" id="linked-accounts-heading">
+            Linked accounts
+          </h2>
+          <LinkedAccounts providers={["github", "google"]} />
+        </section>
+        <section className="space-y-2" aria-labelledby="passkeys-heading">
+          <h2 className="font-semibold" id="passkeys-heading">
+            Passkeys
+          </h2>
+          <PasskeyManager />
+        </section>
         <div className="flex gap-2">
           <button
             className="rounded border px-3 py-1"
@@ -174,10 +189,14 @@ export default function App() {
       </nav>
 
       {screen === "sign-in" && (
-        <SignInForm
-          showSocial={["github", "google"]}
-          onForgotPassword={() => setScreen("forgot-password")}
-        />
+        <>
+          {/* Renders nothing unless this device can run passkey prompts. */}
+          <PasskeySignIn />
+          <SignInForm
+            showSocial={["github", "google"]}
+            onForgotPassword={() => setScreen("forgot-password")}
+          />
+        </>
       )}
       {screen === "create-account" && (
         <>

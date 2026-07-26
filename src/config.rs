@@ -21,6 +21,8 @@ pub struct PluginConfig {
     pub refresh_buffer_secs: u32,
     #[serde(default)]
     pub oauth: OAuthConfig,
+    #[serde(default)]
+    pub passkeys: PasskeyConfig,
 }
 
 impl Default for PluginConfig {
@@ -32,8 +34,20 @@ impl Default for PluginConfig {
             auto_refresh: default_true(),
             refresh_buffer_secs: default_refresh_buffer(),
             oauth: OAuthConfig::default(),
+            passkeys: PasskeyConfig::default(),
         }
     }
+}
+
+/// Passkey (WebAuthn) settings — feature 004, research R8.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PasskeyConfig {
+    /// Origin the built-in native ceremonies assert in `clientDataJSON`,
+    /// e.g. `https://yourdomain.com`. Must be listed in the project's
+    /// `GOTRUE_WEBAUTHN_RP_ORIGINS`. Only required when a built-in ceremony
+    /// is used; app-supplied ceremonies handle their own origin.
+    pub origin: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
@@ -86,6 +100,7 @@ pub struct ValidatedConfig {
     pub refresh_buffer_secs: u32,
     pub callback_ports: Vec<u16>,
     pub flow_timeout_secs: u32,
+    pub passkey_origin: Option<String>,
 }
 
 impl PluginConfig {
@@ -148,6 +163,23 @@ impl PluginConfig {
             )));
         }
 
+        let passkey_origin = match self.passkeys.origin.filter(|o| !o.trim().is_empty()) {
+            None => None,
+            Some(origin) => {
+                let parsed = url::Url::parse(&origin).map_err(|e| {
+                    Error::configuration(format!(
+                        "supabase-auth: 'passkeys.origin' is not a valid URL (got {origin:?}): {e}"
+                    ))
+                })?;
+                if parsed.scheme() != "https" && parsed.scheme() != "http" {
+                    return Err(Error::configuration(format!(
+                        "supabase-auth: 'passkeys.origin' must be an http(s) origin (got {origin:?})"
+                    )));
+                }
+                Some(origin.trim_end_matches('/').to_string())
+            }
+        };
+
         Ok(ValidatedConfig {
             url: url.trim_end_matches('/').to_string(),
             publishable_key,
@@ -156,6 +188,7 @@ impl PluginConfig {
             refresh_buffer_secs: self.refresh_buffer_secs,
             callback_ports: self.oauth.callback_ports,
             flow_timeout_secs: self.oauth.flow_timeout_secs,
+            passkey_origin,
         })
     }
 }

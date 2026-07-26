@@ -1,0 +1,69 @@
+name: Docker
+
+# Publishes the Linux build/test toolchain image to GHCR.
+#
+# Only runs when the image definition changes — the toolchain does not depend on
+# repo sources, so rebuilding on every commit would republish an identical image.
+on:
+  push:
+    branches: [main, next, dev]
+    paths:
+      - docker/**
+      - .dockerignore
+      - .github/workflows/docker.yml
+  pull_request:
+    paths:
+      - docker/**
+      - .dockerignore
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/corpora-auth-ci
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # docker and buildx are preinstalled on ubuntu-latest, and the org's
+      # allowed-actions policy admits GitHub-owned and verified creators only —
+      # docker/build-push-action et al. would fail the workflow at startup.
+      - name: Build
+        run: |
+          docker build \
+            -f docker/Dockerfile \
+            -t "$IMAGE:sha-${GITHUB_SHA::7}" \
+            .
+
+      # Belt and braces: the Dockerfile asserts this at build time too, but a
+      # broken toolchain must never reach the registry.
+      - name: Verify toolchain
+        run: |
+          docker run --rm "$IMAGE:sha-${GITHUB_SHA::7}" bash -lc '
+            set -e
+            rustc --version && cargo clippy --version && cargo fmt --version
+            bun --version && node --version && supabase --version
+            pkg-config --exists webkit2gtk-4.1 && echo "webkit2gtk-4.1 present"
+          '
+
+      # Pull requests validate the image but never publish it.
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push
+        if: github.event_name != 'pull_request'
+        run: |
+          docker tag "$IMAGE:sha-${GITHUB_SHA::7}" "$IMAGE:${GITHUB_REF_NAME}"
+          docker push "$IMAGE:sha-${GITHUB_SHA::7}"
+          docker push "$IMAGE:${GITHUB_REF_NAME}"
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            docker tag "$IMAGE:sha-${GITHUB_SHA::7}" "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi

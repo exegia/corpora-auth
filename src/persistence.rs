@@ -91,6 +91,17 @@ impl FileStore {
             path: app_data_dir.join("supabase-auth-session.json"),
         }
     }
+
+    /// Owner-only (0600) on unix; a no-op elsewhere — Windows inherits the
+    /// per-user ACL of the app-data directory the file already lives in.
+    #[cfg(unix)]
+    fn restrict_permissions(&self) {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600));
+    }
+
+    #[cfg(not(unix))]
+    fn restrict_permissions(&self) {}
 }
 
 impl SessionStore for FileStore {
@@ -112,14 +123,13 @@ impl SessionStore for FileStore {
         if let Some(parent) = self.path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        if let Err(e) = std::fs::write(&self.path, &raw) {
-            tracing::warn!("failed to persist session file: {e}");
-            return;
-        }
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600));
+        // Both arms call a real function on every platform. Inlining the
+        // cfg(unix) block here instead leaves the Ok arm empty on Windows
+        // (clippy::single_match), and an early return on the Err side becomes
+        // the function tail there (clippy::needless_return).
+        match std::fs::write(&self.path, &raw) {
+            Ok(()) => self.restrict_permissions(),
+            Err(e) => tracing::warn!("failed to persist session file: {e}"),
         }
     }
 

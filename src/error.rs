@@ -20,6 +20,19 @@ pub enum ErrorKind {
     OauthFlowInterrupted,
     RateLimited,
     PermissionDenied,
+    /// Linking: the identity is already attached to a different account.
+    IdentityAlreadyLinked,
+    /// Unlinking: refused because it would remove the last sign-in method.
+    LastSignInMethod,
+    /// Passkeys: the server challenge expired or was already consumed —
+    /// retry with a fresh attempt.
+    PasskeyChallengeExpired,
+    /// Passkeys: credential verification rejected (bad assertion, duplicate
+    /// credential, or per-user limit reached — the message distinguishes).
+    PasskeyVerificationFailed,
+    /// Passkeys: no ceremony can run here (platform unsupported / no
+    /// provider). Never produced by the server.
+    PasskeyUnsupported,
     Unknown,
 }
 
@@ -75,6 +88,17 @@ pub(crate) fn classify_auth_text(text: &str) -> ErrorKind {
         || t.contains("invalid_grant")
     {
         ErrorKind::InvalidCredentials
+    // Passkey codes come before the email checks: "credential already
+    // registered" must not hit the generic "already registered" branch.
+    } else if t.contains("webauthn_challenge_expired") || t.contains("webauthn_challenge_not_found")
+    {
+        ErrorKind::PasskeyChallengeExpired
+    } else if t.contains("webauthn_verification_failed")
+        || t.contains("webauthn_credential_exists")
+        || t.contains("webauthn_credential_not_found")
+        || t.contains("too_many_passkeys")
+    {
+        ErrorKind::PasskeyVerificationFailed
     } else if t.contains("user_already_exists")
         || t.contains("email_exists")
         || t.contains("already registered")
@@ -88,6 +112,21 @@ pub(crate) fn classify_auth_text(text: &str) -> ErrorKind {
         || t.contains("token has expired or is invalid")
     {
         ErrorKind::OtpExpired
+    } else if t.contains("identity_already_exists") {
+        ErrorKind::IdentityAlreadyLinked
+    } else if t.contains("single_identity_not_deletable")
+        || t.contains("email_conflict_identity_not_deletable")
+        || t.contains("at least 1 identity after unlinking")
+    {
+        ErrorKind::LastSignInMethod
+    } else if t.contains("manual_linking_disabled") {
+        ErrorKind::Configuration
+    } else if t.contains("passkey_disabled") {
+        // NOTE: GoTrue answers HTTP 404 here — classification must key on the
+        // error code, never the status (research R4).
+        ErrorKind::Configuration
+    } else if t.contains("insufficient_aal") {
+        ErrorKind::PermissionDenied
     } else if t.contains("refresh_token_not_found")
         || t.contains("refresh token not found")
         || t.contains("session_expired")
