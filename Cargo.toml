@@ -8,7 +8,14 @@ rust-version = "1.80"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/exegia/corpora-auth"
 links = "tauri-plugin-supabase-auth"
-exclude = ["/examples", "/ui", "/guest-js", "/node_modules", "/.github"]
+# Workspace-only material: everything a consumer of the crate never needs.
+# `make build:plugin` prints the resulting file list, so this stays honest.
+exclude = [
+  "/examples", "/ui", "/guest-js", "/node_modules", "/.github",
+  "/specs", "/.specify", "/.claude", "/scripts", "/supabase",
+  "/Makefile", "/package.json", "/pnpm-workspace.yaml", "/pnpm-lock.yaml",
+  "/.prettierrc", "/.prettierignore", "/.gitguardian.yaml",
+]
 
 [dependencies]
 tauri = "2"

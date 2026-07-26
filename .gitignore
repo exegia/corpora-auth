@@ -22,3 +22,6 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Local npm tarballs from `make pack`
+dist-packages/
