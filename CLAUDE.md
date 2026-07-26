@@ -87,6 +87,7 @@ Config (`src/config.rs`) deserializes leniently on purpose so `validate()` can n
 ## Things that will bite you
 
 - **`ui` tests need `guest-js/dist`.** The UI suite resolves `@exegia/plugin-supabase-auth` through the built bindings, so a fresh checkout fails until they're built. `make test:ui` handles the ordering; raw `vitest` does not.
+- **`bun run --filter '*'` does not order by workspace dependency in bun 1.3.2** (the version `packageManager` pins and CI installs); 1.3.14 does. That made the root `build` script a race that passed locally and failed in CI with `TS2307: Cannot find module '@exegia/plugin-supabase-auth'`. The script now chains the three packages explicitly — keep it that way rather than relying on the bun version.
 - **`bun pm pack` does not apply `publishConfig` field overrides** (pnpm did). Packing `@exegia/auth-ui` naively yields a tarball whose `package.json` still points at `./src/index.ts`. `scripts/pack.sh` and `release.yml` both mirror the rewrite — don't bypass them.
 - **Escaped-colon Make targets** (`build\:ui`) work as target names but are silently ignored as *prerequisites*. Every rule is a plain name with the `area:thing` form as an alias; express dependencies between the plain names.
 - **Root `clean` ≠ example `clean`.** Root removes `node_modules` and both Cargo targets (~10G, prompts first); the example's keeps dependencies. `make clean:build` is the root equivalent.
