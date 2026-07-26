@@ -66,12 +66,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Reads the bun version from the root package.json "packageManager" field.
-      - uses: oven-sh/setup-bun@v2
+      # Installed inline rather than via oven-sh/setup-bun: this repo's Actions
+      # policy is `selected` with no extra patterns (GitHub-owned + verified
+      # creators only), and a disallowed action fails the whole workflow at
+      # startup — no jobs, no logs, no annotations. Version comes from the
+      # root package.json "packageManager" field so it tracks the lockfile.
+      - name: Install bun
+        run: |
+          BUN_VERSION="$(jq -re '.packageManager' package.json | sed 's/^bun@//')"
+          curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
       # Some tooling (vitest, tsc shims) still spawns `node` directly.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: bun --version
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run --filter @exegia/auth-ui test
