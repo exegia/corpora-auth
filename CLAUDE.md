@@ -107,6 +107,10 @@ feature|bug|doc|chore|hotfix/*  →  dev  →  next  →  main
 
 Only `dev` may target `next`; only `next` may target `main`. Releases are `workflow_dispatch` on `release.yml`: it bumps both npm packages plus the crate version in lockstep, tags, and publishes to GitHub Packages. `make build:*` only verifies a release would work — it never publishes.
 
+**`release.yml` checks out `ref: main` and the dispatch runs `main`'s copy of the workflow.** So a release ships whatever is on `main`, not `dev` — promote `next → main` first, or you publish stale code under a new version. Two traps that follow from this: `main` lags the other branches by a lot, and until it catches up it still carries the pnpm-era workflow, whose `pnpm/action-setup@v4` is not in the org allowlist and fails at startup.
+
+Dry-run the release without publishing by running its steps in a scratch worktree (`git worktree add /tmp/x origin/next --detach`): `bun install --frozen-lockfile`, `bun run build`, the UI tests, the version bumps, then `bun publish --dry-run` in `guest-js/` and `ui/`. The dry run packs the tarball and then stops at `missing authentication` locally — that's expected, CI supplies `NODE_AUTH_TOKEN`.
+
 ### Known issue
 
 `ci.yml` fails at startup — no jobs, no logs, no annotations, on both `push` and `pull_request`. An **org-level** allowed-actions policy on `exegia` admits GitHub-owned and verified-creator actions only (`patterns_allowed: []`), and one disallowed action kills the whole workflow before any job runs. `ci.yml` uses four: `dtolnay/rust-toolchain`, `Swatinem/rust-cache`, `supabase/setup-cli`, `oven-sh/setup-bun`. `pr-base-policy.yml` keeps passing because it uses no actions at all.

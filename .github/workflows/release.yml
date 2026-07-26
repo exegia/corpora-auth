@@ -42,8 +42,13 @@ jobs:
       - name: Bump versions in lockstep
         id: bump
         run: |
-          (cd guest-js && npm version ${{ inputs.bump }} --no-git-tag-version)
-          (cd ui && npm version ${{ inputs.bump }} --no-git-tag-version)
+          # --no-workspaces-update: @exegia/auth-ui depends on the bindings via
+          # `workspace:*`, and npm's post-version dependency pass does not
+          # understand that protocol — it aborts with EUNSUPPORTEDPROTOCOL.
+          # Only the version field needs changing here; bun install owns the
+          # workspace linking.
+          (cd guest-js && npm version ${{ inputs.bump }} --no-git-tag-version --no-workspaces-update)
+          (cd ui && npm version ${{ inputs.bump }} --no-git-tag-version --no-workspaces-update)
           VERSION=$(node -p "require('./guest-js/package.json').version")
           # Keep the crate version aligned (first `version =` in [package]).
           python3 -c "import re,sys; p='Cargo.toml'; s=open(p).read(); open(p,'w').write(re.sub(r'^version = \".*\"$', 'version = \"'+sys.argv[1]+'\"', s, count=1, flags=re.M))" "$VERSION"
