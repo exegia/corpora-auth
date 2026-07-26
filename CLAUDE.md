@@ -45,6 +45,8 @@ Verify tooling changes against a **clean** tree — `make clean && make setup &&
 
 `docker/Dockerfile` reproduces the Linux CI toolchain (Rust + webkit2gtk + bun + node + supabase CLI) so the Linux build is reachable from macOS: `make build:docker` builds and verifies it, `make docker:shell` drops you into it with the repo mounted. `.github/workflows/docker.yml` publishes it to GHCR, and only when `docker/**` changes.
 
+**The image is for local use — CI does not run in it, and that was measured, not assumed.** Converting the `rust` job to `container:` works (the package is `internal` and linked to this repo, so `GITHUB_TOKEN` with `packages: read` pulls it), but it was 278s without `Swatinem/rust-cache` and 427s with a cold one, against a 75–106s baseline on `runs-on` with a warm cache. The image saves the apt/rustup setup; the compilation cache is worth far more. Note when re-measuring that Actions caches are branch-scoped with fallback only to the default branch, so every branch pays one cold run.
+
 ## Driving the example app
 
 The example registers `tauri-plugin-mcp-bridge`, so the `tauri-mcp` CLI can screenshot the webview, query the DOM and evaluate JS — use it to verify UI changes yourself.
