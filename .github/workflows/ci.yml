@@ -32,6 +32,10 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      # Re-added after measuring: without it the containerised job took 278s
+      # against 75-106s for the cached runner-based one. The image saves the
+      # apt/rustup setup but that is worth far less than the compilation cache.
+      - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
