@@ -12,17 +12,29 @@ permissions:
   contents: read
 
 jobs:
+  # Runs in the toolchain image from .github/workflows/docker.yml, which already
+  # carries the Tauri system dependencies and Rust with clippy/rustfmt — so the
+  # apt and toolchain setup steps this job used to need are gone.
+  #
+  # The package is `internal` and linked to this repo via the image's
+  # org.opencontainers.image.source label, so GITHUB_TOKEN can pull it. The
+  # credentials block is still required: `container:` does not use the token
+  # implicitly.
   rust:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/corpora-auth-ci:dev
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
+      # Re-added after measuring: without it the containerised job took 278s
+      # against 75-106s for the cached runner-based one. The image saves the
+      # apt/rustup setup but that is worth far less than the compilation cache.
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
