@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🔐 tauri-plugin-supabase-auth
+<img src="assets/banner.png" width="900" alt="tauri-plugin-supabase-auth — complete Supabase authentication for Tauri v2 desktop apps, plus a ready-made React UI kit">
 
-**Complete Supabase authentication for Tauri v2 desktop apps** — plus a ready-made React auth UI kit.
+------------------------------------------------------
 
 [![CI](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#-license)
