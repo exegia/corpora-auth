@@ -7,6 +7,7 @@
   ],
   "permissions": [
     "core:default",
+    "mcp-bridge:default",
     "supabase-auth:default",
     "supabase-auth:allow-reset-password-for-email",
     "supabase-auth:allow-update-user",

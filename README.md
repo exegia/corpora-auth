@@ -297,9 +297,9 @@ Built-in native ceremonies for macOS (AuthenticationServices) and Windows (`weba
 
 ```bash
 git clone https://github.com/exegia/corpora-auth && cd corpora-auth
-supabase init && supabase start        # local stack; mail UI at http://127.0.0.1:54324
-bun install
-cd examples/tauri-app && bun run tauri dev
+make setup                             # bun install + toolchain preflight
+make supabase-up                       # local stack; mail UI at http://127.0.0.1:54324
+make -C examples/tauri-app dev
 ```
 
 The example wires every block to the local stack out of the box — see [examples/tauri-app](./examples/tauri-app).
@@ -315,10 +315,40 @@ The example wires every block to the local stack out of the box — see [example
 
 ## 🛠️ Development
 
+`make` at the repo root lists every task. The common loop:
+
 ```bash
-cargo test                              # 40 Rust contract tests (wiremock GoTrue)
+make setup                # bun install + toolchain preflight
+make supabase-up          # local stack; mail UI at http://127.0.0.1:54324
+make test                 # Rust suite + 168 UI tests
+make check                # cargo fmt --check, clippy, tsc --noEmit
+```
+
+| Target | What it does |
+|---|---|
+| `make build` | Every publishable artifact: bindings → UI kit → crate package check |
+| `make build:bindings` / `build:ui` | The two npm packages (`@exegia/plugin-supabase-auth`, `@exegia/auth-ui`) |
+| `make build:plugin` | `cargo publish --dry-run` + a report of what ships in the crate tarball |
+| `make pack` | npm tarballs into `dist-packages/` so you can inspect them before a release |
+| `make test:rust` / `test:ui` / `test:e2e` / `test:example` | One suite at a time |
+| `make clean` / `clean:build` / `clean:dry` | Remove everything generated / build output only / just report |
+
+`test:ui` builds the bindings first — the UI suite resolves
+`@exegia/plugin-supabase-auth` through `guest-js/dist`, so it fails on a fresh
+checkout without that step.
+
+Publishing itself stays in [`.github/workflows/release.yml`](./.github/workflows/release.yml),
+which bumps all three versions in lockstep and pushes both npm packages to
+GitHub Packages. The `build:*` targets only verify that a release would work.
+
+The example app has its own task runner: `make -C examples/tauri-app help`.
+
+The equivalent raw commands, if you'd rather not use make:
+
+```bash
+cargo test                              # Rust contract tests (wiremock GoTrue)
 bun install && bun run build
-bun run --filter @exegia/auth-ui test   # 44 UI tests incl. accessibility
+bun run --filter @exegia/auth-ui test   # UI tests incl. accessibility
 bun run test:e2e                        # lifecycle E2E vs a live stack (SUPABASE_E2E_URL / SUPABASE_E2E_KEY)
 ```
 
