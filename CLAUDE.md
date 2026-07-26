@@ -106,4 +106,8 @@ Only `dev` may target `next`; only `next` may target `main`. Releases are `workf
 
 ### Known issue
 
-CI has failed to start since the bun migration (`98909ad`). The repo's Actions policy is `allowed_actions: selected` with `patterns_allowed: []`, which does not admit `oven-sh/setup-bun@v2`; the workflow dies before any job runs, producing no logs or annotations. Fix by allowlisting `oven-sh/*` in repo settings or installing bun inline in `ci.yml`.
+`ci.yml` fails at startup — no jobs, no logs, no annotations, on both `push` and `pull_request`. An **org-level** allowed-actions policy on `exegia` admits GitHub-owned and verified-creator actions only (`patterns_allowed: []`), and one disallowed action kills the whole workflow before any job runs. `ci.yml` uses four: `dtolnay/rust-toolchain`, `Swatinem/rust-cache`, `supabase/setup-cli`, `oven-sh/setup-bun`. `pr-base-policy.yml` keeps passing because it uses no actions at all.
+
+Fix: allowlist those four at **org** level (`PUT /orgs/exegia/actions/permissions/selected-actions`, needs `admin:org` — the repo-level endpoint returns 409 because org policy wins).
+
+Two traps if you re-diagnose this: the last green run (`7ec1bbc`) predates the bun migration by a day, which makes the migration look causal — it isn't, the policy was tightened separately. And startup failures expose nothing through `gh run view --log-failed` or the checks API; isolate them by pushing a throwaway workflow that uses a single action.
