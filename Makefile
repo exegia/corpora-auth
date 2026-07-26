@@ -14,7 +14,7 @@ REPO_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 SCRIPTS   := $(REPO_ROOT)/scripts
 EXAMPLE   := $(REPO_ROOT)/examples/tauri-app
 
-PNPM ?= pnpm
+BUN ?= bun
 
 # Workspace package names, so the targets read the way the registry does.
 PKG_BINDINGS := @exegia/plugin-supabase-auth
@@ -24,7 +24,7 @@ CRATE        := tauri-plugin-supabase-auth
 # Where `make pack` drops inspectable tarballs.
 DIST := $(REPO_ROOT)/dist-packages
 
-export REPO_ROOT SCRIPTS EXAMPLE PNPM PKG_BINDINGS PKG_UI CRATE DIST
+export REPO_ROOT SCRIPTS EXAMPLE BUN PKG_BINDINGS PKG_UI CRATE DIST
 
 .DEFAULT_GOAL := help
 
@@ -54,8 +54,8 @@ setup: install ## Install dependencies and preflight the toolchain
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" doctor
 
 .PHONY: install
-install: ## pnpm install across the workspace
-	@cd "$(REPO_ROOT)" && $(PNPM) install
+install: ## bun install across the workspace
+	@cd "$(REPO_ROOT)" && $(BUN) install
 
 .PHONY: doctor
 doctor: ## Diagnose the toolchain, Supabase stack and ports
@@ -72,11 +72,11 @@ build: build-bindings build-ui build-plugin ## Build every publishable artifact
 
 build\:bindings: build-bindings ## Build @exegia/plugin-supabase-auth (tsup, esm+cjs+dts)
 build-bindings:
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter $(PKG_BINDINGS) build
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_BINDINGS)' build
 
 build\:ui: build-ui ## Build @exegia/auth-ui into ui/dist (needs the bindings' dist)
 build-ui: build-bindings
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter $(PKG_UI) build
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' build
 
 build\:plugin: build-plugin ## Verify the Rust crate packages cleanly for crates.io (cargo publish --dry-run)
 build-plugin:
@@ -92,13 +92,7 @@ build-docker:
 
 .PHONY: pack
 pack: build-bindings build-ui ## Produce inspectable npm tarballs in dist-packages/
-	@mkdir -p "$(DIST)"
-	@cd "$(REPO_ROOT)/guest-js" && $(PNPM) pack --pack-destination "$(DIST)"
-	@cd "$(REPO_ROOT)/ui" && $(PNPM) pack --pack-destination "$(DIST)"
-	@echo ""
-	@ls -1 "$(DIST)"
-	@echo ""
-	@echo "Publishing is done by .github/workflows/release.yml, not from a dev machine."
+	@"$(SCRIPTS)/pack.sh"
 
 # ---------------------------------------------------------------- test
 
@@ -115,7 +109,7 @@ test-rust:
 # is the same ordering the `web` job in .github/workflows/ci.yml relies on.
 test\:ui: test-ui ## vitest for @exegia/auth-ui (builds the bindings first)
 test-ui: build-bindings
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter $(PKG_UI) test
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' test
 
 test\:e2e: test-e2e ## Full auth lifecycle against the local Supabase stack
 test-e2e:
@@ -123,7 +117,7 @@ test-e2e:
 
 test\:example: test-example ## Run the example app's own test script
 test-example:
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter tauri-app test
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter tauri-app test
 
 # ---------------------------------------------------------------- quality
 
@@ -143,7 +137,7 @@ fmt: ## Format the Rust sources
 
 .PHONY: typecheck
 typecheck: ## tsc --noEmit across the TypeScript packages
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter $(PKG_UI) typecheck
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' typecheck
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" typecheck
 
 # ---------------------------------------------------------------- supabase

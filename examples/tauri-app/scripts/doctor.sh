@@ -28,7 +28,7 @@ SUPABASE_OK=0
 MCP_OK=1
 
 heading "Toolchain"
-for tool in node pnpm cargo rustc; do
+for tool in bun node cargo rustc; do
   if have "$tool"; then ok "$tool $("$tool" --version 2>/dev/null | head -1)"; else fail "$tool not found"; fi
 done
 if have supabase; then ok "supabase $(supabase --version 2>/dev/null | head -1)"; else warn "supabase CLI not found"; fi

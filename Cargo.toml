@@ -13,7 +13,7 @@ links = "tauri-plugin-supabase-auth"
 exclude = [
   "/examples", "/ui", "/guest-js", "/node_modules", "/.github",
   "/specs", "/.specify", "/.claude", "/scripts", "/supabase",
-  "/Makefile", "/package.json", "/pnpm-workspace.yaml", "/pnpm-lock.yaml",
+  "/Makefile", "/package.json", "/bun.lock",
   "/.prettierrc", "/.prettierignore", "/.gitguardian.yaml",
 ]
 

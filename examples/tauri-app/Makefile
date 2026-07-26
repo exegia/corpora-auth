@@ -17,7 +17,7 @@ MCP_CONFIG    := $(TAURI_DIR)/tauri.mcp.conf.json
 ARTIFACTS     := $(APP_DIR)/.mcp-artifacts
 
 PKG  := tauri-app
-PNPM ?= pnpm
+BUN ?= bun
 
 # Ports. Override on the command line, e.g. `make dev-mcp MCP_PORT=9225`.
 VITE_PORT     ?= 1420
@@ -27,7 +27,7 @@ MAIL_URL      ?= http://127.0.0.1:54324
 
 # Exported so the scripts see the same values as the Makefile.
 export REPO_ROOT APP_DIR TAURI_DIR MCP_CONFIG ARTIFACTS
-export VITE_PORT MCP_PORT SUPABASE_PORT MAIL_URL PKG PNPM
+export VITE_PORT MCP_PORT SUPABASE_PORT MAIL_URL PKG BUN
 
 .DEFAULT_GOAL := help
 
@@ -51,8 +51,8 @@ setup: ## Preflight the toolchain and install workspace dependencies
 	@"$(SCRIPTS)/setup.sh"
 
 .PHONY: install
-install: ## pnpm install at the repo root (installs the whole workspace)
-	@cd "$(REPO_ROOT)" && $(PNPM) install
+install: ## bun install at the repo root (installs the whole workspace)
+	@cd "$(REPO_ROOT)" && $(BUN) install
 
 .PHONY: doctor
 doctor: ## Diagnose toolchain, ports, Supabase stack and MCP wiring
@@ -62,32 +62,32 @@ doctor: ## Diagnose toolchain, ports, Supabase stack and MCP wiring
 
 .PHONY: dev
 dev: ## Run the app in development mode (Vite + Tauri)
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter $(PKG) tauri dev
+	@cd "$(APP_DIR)" && $(BUN) run tauri dev
 
 .PHONY: dev-mcp
 dev-mcp: ## Run in dev mode with window.__TAURI__ exposed, for tauri-mcp automation
 	@echo "==> dev + MCP overlay ($(MCP_CONFIG))"
 	@echo "    withGlobalTauri is enabled for this run only; the committed config stays off."
 	@echo "    bridge base port: $(MCP_PORT)"
-	@cd "$(REPO_ROOT)" && MCP_BRIDGE_PORT=$(MCP_PORT) $(PNPM) --filter $(PKG) tauri dev --config "$(MCP_CONFIG)"
+	@cd "$(APP_DIR)" && MCP_BRIDGE_PORT=$(MCP_PORT) $(BUN) run tauri dev --config "$(MCP_CONFIG)"
 
 .PHONY: preview
 preview: ## Serve the built frontend without Tauri
-	@cd "$(APP_DIR)" && $(PNPM) preview
+	@cd "$(APP_DIR)" && $(BUN) run preview
 
 # ---------------------------------------------------------------- build
 
 .PHONY: build
 build: ## Type-check and build the frontend bundle
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter $(PKG) build
+	@cd "$(APP_DIR)" && $(BUN) run build
 
 .PHONY: build-app
 build-app: ## Build the Tauri app binary (bundling is disabled in tauri.conf.json)
-	@cd "$(REPO_ROOT)" && $(PNPM) --filter $(PKG) tauri build
+	@cd "$(APP_DIR)" && $(BUN) run tauri build
 
 .PHONY: typecheck
 typecheck: ## tsc --noEmit for the example frontend
-	@cd "$(APP_DIR)" && $(PNPM) exec tsc --noEmit
+	@cd "$(APP_DIR)" && $(BUN) x tsc --noEmit
 
 .PHONY: fmt
 fmt: ## Format the example's Rust sources
@@ -105,7 +105,7 @@ check: typecheck lint ## typecheck + lint
 
 .PHONY: test
 test: ## Run the workspace unit tests (plugin + UI kit)
-	@cd "$(REPO_ROOT)" && $(PNPM) test
+	@cd "$(REPO_ROOT)" && $(BUN) run test
 
 .PHONY: test-e2e
 test-e2e: ## Run the live-stack Rust E2E lifecycle tests (needs `make supabase-up`)
@@ -113,7 +113,7 @@ test-e2e: ## Run the live-stack Rust E2E lifecycle tests (needs `make supabase-u
 	@cd "$(REPO_ROOT)" && eval "$$(supabase status -o env)" && \
 		SUPABASE_E2E_URL="$${SUPABASE_E2E_URL:-$$API_URL}" \
 		SUPABASE_E2E_KEY="$${SUPABASE_E2E_KEY:-$$ANON_KEY}" \
-		$(PNPM) test:e2e
+		$(BUN) run test:e2e
 
 # ---------------------------------------------------------------- supabase
 

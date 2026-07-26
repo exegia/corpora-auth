@@ -60,9 +60,9 @@ case "$CMD" in
       ok "tauri-mcp already installed ($(tauri-mcp --version 2>/dev/null | head -1))"
       exit 0
     fi
-    have pnpm || die "pnpm is required to install the CLI"
-    info "pnpm add -g $TAURI_MCP_PKG"
-    pnpm add -g "$TAURI_MCP_PKG"
+    have bun || die "bun is required to install the CLI"
+    info "bun add -g $TAURI_MCP_PKG"
+    bun add -g "$TAURI_MCP_PKG"
     ok "installed"
     ;;
 

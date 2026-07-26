@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$REPO_ROOT/scripts/lib.sh"
 
 : "${PKG:=tauri-app}"
-: "${PNPM:=pnpm}"
+: "${BUN:=bun}"
 : "${VITE_PORT:=1420}"
 : "${MCP_PORT:=9223}"
 : "${SUPABASE_PORT:=54321}"

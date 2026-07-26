@@ -21,7 +21,7 @@ info "target unspecified. Pick a reading and this script becomes a few lines."
 heading "Candidate readings"
 
 printf '  %s1. Linux build/test toolchain image%s\n' "$C_BOLD" "$C_RESET"
-info "   Rust + libwebkit2gtk-4.1-dev + node/pnpm, mirroring the ubuntu jobs in"
+info "   Rust + libwebkit2gtk-4.1-dev + bun, mirroring the ubuntu jobs in"
 info "   .github/workflows/ci.yml. Lets macOS developers reproduce the Linux"
 info "   build locally and gives CI a warm cache. Publishable to ghcr.io."
 

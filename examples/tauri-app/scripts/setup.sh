@@ -5,7 +5,7 @@
 # needs doing. Idempotent: safe to re-run. It deliberately does NOT start the
 # Supabase stack or mutate supabase/config.toml — those are explicit targets.
 #
-#   ./scripts/setup.sh              # preflight + pnpm install
+#   ./scripts/setup.sh              # preflight + bun install
 #   ./scripts/setup.sh --no-install # preflight only
 #   ./scripts/setup.sh --mcp        # also install the tauri-mcp CLI globally
 
@@ -43,18 +43,21 @@ else
   MISSING=1
 fi
 
-if have pnpm; then
-  PNPM_MAJOR="$(major_version "$(pnpm -v)")"
-  if [ "${PNPM_MAJOR:-0}" -ge 9 ]; then
-    ok "pnpm $(pnpm -v)"
+if have bun; then
+  BUN_VERSION="$(bun --version)"
+  BUN_MAJOR="${BUN_VERSION%%.*}"
+  BUN_MINOR="$(printf '%s' "$BUN_VERSION" | cut -d. -f2)"
+  # The workspace pins bun 1.3.x in package.json's packageManager field.
+  if [ "${BUN_MAJOR:-0}" -gt 1 ] || { [ "${BUN_MAJOR:-0}" -eq 1 ] && [ "${BUN_MINOR:-0}" -ge 3 ]; }; then
+    ok "bun $BUN_VERSION"
   else
-    fail "pnpm $(pnpm -v) — this workspace pins pnpm 9"
-    hint "corepack enable && corepack prepare pnpm@9 --activate"
+    fail "bun $BUN_VERSION — this workspace needs bun 1.3 or newer"
+    hint "curl -fsSL https://bun.sh/install | bash   (or: brew upgrade bun)"
     MISSING=1
   fi
 else
-  fail "pnpm not found"
-  hint "corepack enable && corepack prepare pnpm@9 --activate"
+  fail "bun not found"
+  hint "curl -fsSL https://bun.sh/install | bash   (or: brew install oven-sh/bun/bun)"
   MISSING=1
 fi
 
@@ -97,8 +100,8 @@ fi
 heading "Workspace"
 
 if [ "$DO_INSTALL" -eq 1 ]; then
-  info "pnpm install (repo root: $REPO_ROOT)"
-  (cd "$REPO_ROOT" && "$PNPM" install)
+  info "bun install (repo root: $REPO_ROOT)"
+  (cd "$REPO_ROOT" && "$BUN" install)
   ok "dependencies installed"
 else
   if [ -d "$REPO_ROOT/node_modules" ]; then
