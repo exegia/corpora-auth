@@ -86,9 +86,13 @@ build\:example: build-example ## Build the example app's frontend bundle
 build-example: build-ui
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" build
 
-build\:docker: build-docker ## (unspecified — prints the candidate readings and exits)
+build\:docker: build-docker ## Build the Linux CI toolchain image (CI publishes it to GHCR)
 build-docker:
-	@"$(SCRIPTS)/build-docker.sh"
+	@"$(SCRIPTS)/build-docker.sh" --verify
+
+docker\:shell: docker-shell ## Build the image and open a shell in it with the repo mounted
+docker-shell:
+	@"$(SCRIPTS)/build-docker.sh" --shell
 
 .PHONY: pack
 pack: build-bindings build-ui ## Produce inspectable npm tarballs in dist-packages/
@@ -169,8 +173,8 @@ clean-dry:
 	@"$(SCRIPTS)/clean.sh" --dry-run
 
 # Declared last so both spellings of every target are covered in one place.
-.PHONY: build\:bindings build\:ui build\:plugin build\:example build\:docker
-.PHONY: build-bindings build-ui build-plugin build-example build-docker
+.PHONY: build\:bindings build\:ui build\:plugin build\:example build\:docker docker\:shell
+.PHONY: build-bindings build-ui build-plugin build-example build-docker docker-shell
 .PHONY: test\:rust test\:plugin test\:ui test\:e2e test\:example
 .PHONY: test-rust test-ui test-e2e test-example
 .PHONY: clean\:build clean\:dry clean-build clean-dry

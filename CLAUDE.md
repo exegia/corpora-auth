@@ -43,6 +43,8 @@ Example app: `make -C examples/tauri-app dev`. Its `src-tauri/` is **its own Car
 
 Verify tooling changes against a **clean** tree — `make clean && make setup && make build && make test`. Ordering defects (a missing build prerequisite) pass on a warm tree and fail on a fresh checkout.
 
+`docker/Dockerfile` reproduces the Linux CI toolchain (Rust + webkit2gtk + bun + node + supabase CLI) so the Linux build is reachable from macOS: `make build:docker` builds and verifies it, `make docker:shell` drops you into it with the repo mounted. `.github/workflows/docker.yml` publishes it to GHCR, and only when `docker/**` changes.
+
 ## Driving the example app
 
 The example registers `tauri-plugin-mcp-bridge`, so the `tauri-mcp` CLI can screenshot the webview, query the DOM and evaluate JS — use it to verify UI changes yourself.
