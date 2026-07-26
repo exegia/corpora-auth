@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Provider, Session } from "@exegia/plugin-supabase-auth";
+import type { AuthError, Provider, Session } from "@exegia/plugin-supabase-auth";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,12 @@ import { SocialButtons } from "./social-buttons";
 
 export interface SignInFormProps {
   onSuccess?: (session: Session) => void;
+  /**
+   * Called when an attempt fails, in addition to the inline alert this block
+   * already renders. Lets a host build its own failure surface (a dedicated
+   * error screen, telemetry) without having to reimplement the form.
+   */
+  onError?: (error: AuthError) => void;
   onForgotPassword?: () => void;
   showSocial?: Provider[];
   errorMessages?: ErrorMessageOverrides;
@@ -23,6 +29,7 @@ export interface SignInFormProps {
 
 export function SignInForm({
   onSuccess,
+  onError,
   onForgotPassword,
   showSocial,
   errorMessages,
@@ -59,6 +66,7 @@ export function SignInForm({
       setPassword("");
     }
     setStatus({ kind: "error", error: result.error });
+    onError?.(result.error);
   }
 
   return (
@@ -67,6 +75,7 @@ export function SignInForm({
         <>
           <SocialButtons
             errorMessages={errorMessages}
+            onError={onError}
             onSuccess={onSuccess}
             providers={showSocial}
           />
