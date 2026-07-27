@@ -16,6 +16,10 @@
           {
             "group": "Get started",
             "pages": ["index", "quickstart"]
+          },
+          {
+            "group": "Contributing",
+            "pages": ["contributing/commands"]
           }
         ]
       },
