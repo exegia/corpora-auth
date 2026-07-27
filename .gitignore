@@ -25,3 +25,7 @@ Thumbs.db
 
 # Local npm tarballs from `make pack`
 dist-packages/
+
+# Agent skill mirrors — canonical copies live in docs/skills/
+.agents/
+.grok/
