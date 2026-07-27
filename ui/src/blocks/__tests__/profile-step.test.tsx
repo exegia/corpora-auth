@@ -110,7 +110,7 @@ describe("OnboardingFlow profile field kinds", () => {
 
     await screen.findByText("You're all set", { selector: "h2" });
     expect(bindings.updateUser).toHaveBeenCalledTimes(1);
-    const payload = bindings.updateUser.mock.calls[0][0] as {
+    const payload = bindings.updateUser.mock.calls[0]?.[0] as {
       data: Record<string, unknown>;
     };
     expect(payload.data.role).toBe("engineer");
@@ -136,7 +136,7 @@ describe("OnboardingFlow profile field kinds", () => {
     await screen.findByText("You're all set", { selector: "h2" });
 
     expect(bindings.updateUser).toHaveBeenCalledTimes(2);
-    const first = bindings.updateUser.mock.calls[0][0] as {
+    const first = bindings.updateUser.mock.calls[0]?.[0] as {
       data: Record<string, unknown>;
     };
     expect(first.data).toMatchObject({
@@ -150,7 +150,7 @@ describe("OnboardingFlow profile field kinds", () => {
         steps: { identity: "done" },
       },
     });
-    const second = bindings.updateUser.mock.calls[1][0] as {
+    const second = bindings.updateUser.mock.calls[1]?.[0] as {
       data: Record<string, unknown>;
     };
     expect(second.data).toMatchObject({

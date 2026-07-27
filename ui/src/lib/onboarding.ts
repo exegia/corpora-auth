@@ -156,8 +156,22 @@ function assertNotReserved(field: FieldConfig): void {
   }
 }
 
-/** Validates a declared step config; throws on invalid configurations. */
-export function assertValidSteps(steps: OnboardingStepConfig[]): void {
+/**
+ * A step list that has been through {@link assertValidSteps} — guaranteed to
+ * hold at least one step, so `steps[0]` is always present.
+ */
+export type NonEmptySteps = [OnboardingStepConfig, ...OnboardingStepConfig[]];
+
+/**
+ * Validates a declared step config; throws on invalid configurations.
+ *
+ * Declared as an assertion so the non-empty guarantee it enforces survives into
+ * the type system — callers that index into the list afterwards do not have to
+ * re-prove it.
+ */
+export function assertValidSteps(
+  steps: OnboardingStepConfig[],
+): asserts steps is NonEmptySteps {
   if (steps.length === 0) {
     throw new Error("OnboardingFlow requires at least one profile step.");
   }
