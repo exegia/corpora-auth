@@ -41,7 +41,7 @@ export function SignUpForm({
   const submitting = status.kind === "submitting";
 
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
+    event: React.SubmitEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
     if (submitting) return;
