@@ -4,7 +4,7 @@
   "workspaces": [
     "guest-js",
     "ui",
-    "examples/tauri-app"
+    "examples/*-app"
   ],
   "scripts": {
     "build": "bun run --filter @exegia/plugin-supabase-auth build && bun run --filter @exegia/auth-ui build && bun run --filter tauri-app build",
