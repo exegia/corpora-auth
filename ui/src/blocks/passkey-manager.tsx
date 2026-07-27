@@ -56,7 +56,7 @@ export function PasskeyManager({
 
   if (sessionStatus === "signedOut") {
     return (
-      <p className={cn("text-muted-foreground text-sm", className)}>
+      <p data-slot="auth-block" className={cn("text-muted-foreground text-sm", className)}>
         Sign in to manage the passkeys on your account.
       </p>
     );
@@ -64,7 +64,7 @@ export function PasskeyManager({
 
   if (capability !== null && !capability.usable) {
     return (
-      <p className={cn("text-muted-foreground text-sm", className)}>
+      <p data-slot="auth-block" className={cn("text-muted-foreground text-sm", className)}>
         Passkeys aren&apos;t available on this device. You can manage them from
         a device that supports passkeys.
       </p>
@@ -74,7 +74,7 @@ export function PasskeyManager({
   if (sessionStatus === "loading" || status === "loading") {
     return (
       <div
-        className={cn(
+ data-slot="auth-block"        className={cn(
           "flex items-center gap-2 text-muted-foreground text-sm",
           className,
         )}
@@ -87,7 +87,7 @@ export function PasskeyManager({
 
   if (status === "error" && error) {
     return (
-      <div className={cn("flex flex-col gap-2", className)}>
+      <div data-slot="auth-block" className={cn("flex flex-col gap-2", className)}>
         <AuthErrorAlert
           action={
             <Button
@@ -171,7 +171,7 @@ export function PasskeyManager({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-3", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-3", className)}>
       {actionError ? (
         <AuthErrorAlert error={actionError} overrides={errorMessages} />
       ) : null}
@@ -184,7 +184,8 @@ export function PasskeyManager({
             const name = passkey.friendlyName ?? "Passkey";
             return (
               <li
-                className="flex flex-col gap-2 rounded-lg border px-3 py-2"
+                className="flex flex-col gap-2 rounded-2xl border px-3 py-2"
+                data-motion="pop"
                 key={passkey.id}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -265,7 +266,7 @@ export function PasskeyManager({
 
                 {confirmingId === passkey.id ? (
                   <div
-                    className="flex flex-col gap-2 rounded-md bg-muted/50 p-2"
+                    className="flex flex-col gap-2 rounded-2xl bg-muted/50 p-2"
                     role="alertdialog"
                     aria-label={`Confirm deleting ${name}`}
                   >

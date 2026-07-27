@@ -83,7 +83,7 @@ export function OnboardingFlow({
 
   if (flow.state === "loading") {
     return (
-      <div className={cn("flex w-full justify-center p-4", className)}>
+      <div data-slot="auth-block" className={cn("flex w-full justify-center p-4", className)}>
         <Spinner />
       </div>
     );
@@ -109,7 +109,7 @@ export function OnboardingFlow({
       : errorMessages;
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
       <nav aria-label="Sign-up progress">
         <ol className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
           {flow.progress.map((item) => (

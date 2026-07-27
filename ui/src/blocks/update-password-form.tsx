@@ -67,7 +67,7 @@ export function UpdatePasswordForm({
   if (sessionStatus === "loading") {
     return (
       <div
-        className={cn("flex w-full items-center gap-2", className)}
+ data-slot="auth-block"        className={cn("flex w-full items-center gap-2", className)}
         role="status"
       >
         <Spinner />
@@ -78,7 +78,7 @@ export function UpdatePasswordForm({
 
   if (sessionStatus !== "signedIn") {
     return (
-      <div className={cn("flex w-full flex-col gap-4", className)}>
+      <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
         <Alert variant="warning">
           <AlertTitle>You're signed out</AlertTitle>
           <AlertDescription>
@@ -91,7 +91,11 @@ export function UpdatePasswordForm({
 
   if (status.kind === "success") {
     return (
-      <div className={cn("flex w-full flex-col gap-4", className)}>
+      <div
+        data-motion="pop"
+        data-slot="auth-block"
+        className={cn("flex w-full flex-col gap-4", className)}
+      >
         <Alert variant="success">
           <AlertTitle>Password updated</AlertTitle>
           <AlertDescription>
@@ -103,7 +107,7 @@ export function UpdatePasswordForm({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
       {status.kind === "error" ? (
         <AuthErrorAlert error={status.error} overrides={errorMessages} />
       ) : null}

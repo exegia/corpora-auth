@@ -41,7 +41,7 @@ export function AuthErrorAlert({
   }, [error]);
 
   return (
-    <Alert ref={ref} tabIndex={-1} variant="error">
+    <Alert data-motion="pop" ref={ref} tabIndex={-1} variant="error">
       <AlertDescription>{resolveMessage(error, overrides)}</AlertDescription>
       {action ? <AlertAction>{action}</AlertAction> : null}
     </Alert>

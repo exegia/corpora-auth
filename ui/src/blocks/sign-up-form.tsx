@@ -41,7 +41,7 @@ export function SignUpForm({
   const submitting = status.kind === "submitting";
 
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
+    event: React.SubmitEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
     if (submitting) return;
@@ -69,7 +69,11 @@ export function SignUpForm({
 
   if (status.kind === "success" && signUpResult) {
     return (
-      <div className={cn("flex w-full flex-col gap-4", className)}>
+      <div
+        data-motion="pop"
+        data-slot="auth-block"
+        className={cn("flex w-full flex-col gap-4", className)}
+      >
         {signUpResult.status === "pendingConfirmation" ? (
           <Alert variant="success">
             <AlertTitle>Check your inbox</AlertTitle>
@@ -89,7 +93,7 @@ export function SignUpForm({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
       {status.kind === "error" ? (
         <AuthErrorAlert error={status.error} overrides={errorMessages} />
       ) : null}

@@ -110,7 +110,7 @@ export function ProfileStep({
           <textarea
             aria-describedby={error ? errorId : undefined}
             aria-invalid={error ? true : undefined}
-            className="min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-base text-foreground shadow-xs/5 outline-none placeholder:text-muted-foreground/72 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 disabled:opacity-64 aria-invalid:border-destructive/36 sm:text-sm dark:bg-input/32"
+            className="min-h-24 w-full rounded-3xl border border-input bg-background px-3 py-2 text-base text-foreground shadow-xs/5 outline-none placeholder:text-muted-foreground/72 transition-[box-shadow,border-color] duration-(--duration-quick) ease-(--ease-smooth-out) focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 disabled:opacity-64 aria-invalid:border-destructive/36 sm:text-sm dark:bg-input/32"
             disabled={submitting}
             id={controlId}
             onChange={(event) => setValue(field.name, event.target.value)}
@@ -138,7 +138,7 @@ export function ProfileStep({
           <select
             aria-describedby={error ? errorId : undefined}
             aria-invalid={error ? true : undefined}
-            className="h-8.5 w-full rounded-lg border border-input bg-background px-[calc(--spacing(3)-1px)] text-base text-foreground shadow-xs/5 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 disabled:opacity-64 aria-invalid:border-destructive/36 sm:h-7.5 sm:text-sm dark:bg-input/32"
+            className="h-8.5 w-full rounded-full border border-input bg-background px-[calc(--spacing(3)-1px)] text-base text-foreground shadow-xs/5 outline-none transition-[box-shadow,border-color] duration-(--duration-quick) ease-(--ease-smooth-out) focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 disabled:opacity-64 aria-invalid:border-destructive/36 sm:h-7.5 sm:text-sm dark:bg-input/32"
             disabled={submitting}
             id={controlId}
             onChange={(event) => setValue(field.name, event.target.value)}
@@ -193,7 +193,12 @@ export function ProfileStep({
   }
 
   return (
-    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit}>
+    <form
+      className="flex flex-col gap-4"
+      data-motion="slide"
+      noValidate
+      onSubmit={handleSubmit}
+    >
       {step.fields.map((field) => renderField(field))}
       <div className="flex gap-2">
         {onBack ? (

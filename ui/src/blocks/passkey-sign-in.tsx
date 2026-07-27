@@ -63,7 +63,7 @@ export function PasskeySignIn({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-3", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-3", className)}>
       {error ? (
         <div className="flex flex-col gap-1">
           <AuthErrorAlert error={error} overrides={errorMessages} />

@@ -13,7 +13,7 @@
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && cp src/styles.css dist/styles.css",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && cp src/styles.css dist/styles.css && mkdir -p dist/fonts && cp src/fonts/CalSansVF.woff2 src/fonts/OFL.txt dist/fonts/",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
