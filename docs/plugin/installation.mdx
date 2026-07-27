@@ -1,0 +1,80 @@
+---
+title: "Installation"
+description: "Add the Rust plugin to a Tauri v2 app and install the typed webview bindings."
+---
+
+The plugin has three installable pieces. The Rust crate is required; the bindings are required if the webview needs to authenticate; the UI kit is optional.
+
+## Requirements
+
+| Requirement | Notes |
+| --- | --- |
+| Tauri | v2 |
+| Rust | Whatever your Tauri app already uses |
+| Platforms | macOS, Windows, Linux. Mobile targets are not supported |
+| Supabase | Any GoTrue-backed project: hosted, self-hosted, or a local `supabase start` stack |
+| Node | Required alongside bun — the TypeScript toolchain spawns it |
+
+## The Rust crate
+
+The crate is not on crates.io yet, so consume it as a git dependency.
+
+```toml src-tauri/Cargo.toml
+[dependencies]
+tauri-plugin-supabase-auth = { git = "https://github.com/exegia/corpora-auth" }
+```
+
+Register it on the builder:
+
+```rust src-tauri/src/lib.rs
+tauri::Builder::default()
+    .plugin(tauri_plugin_supabase_auth::init())
+    .run(tauri::generate_context!())
+    .expect("error while running tauri application");
+```
+
+`init()` reads its configuration from `tauri.conf.json` and validates it at startup. If you need to supply a custom WebAuthn ceremony provider, use `PluginBuilder` instead — see [Passkeys](/plugin/passkeys).
+
+## The frontend packages
+
+Both npm packages are published to GitHub Packages under the `@exegia` scope, so the scope has to be pointed at that registry.
+
+```ini .npmrc
+@exegia:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+Any token with `read:packages` works.
+
+<CodeGroup>
+
+```bash bun
+bun add @exegia/plugin-supabase-auth
+bun add @exegia/auth-ui
+```
+
+```bash npm
+npm install @exegia/plugin-supabase-auth
+npm install @exegia/auth-ui
+```
+
+</CodeGroup>
+
+`@exegia/auth-ui` declares `react` and `react-dom` 19 as peer dependencies and depends on the bindings package, so installing the kit pulls the bindings in with it.
+
+## Tailwind consumers
+
+The UI kit ships compiled JavaScript with Tailwind class names as string literals. Tailwind only scans your own sources, so utilities used exclusively inside the kit are never generated and those rules silently do nothing. Add the package as a source next to your `@import`:
+
+```css
+@import "tailwindcss";
+@source "../node_modules/@exegia/auth-ui/dist";
+```
+
+Use `dist`, not `src` — `dist` is what the published package ships.
+
+## Next
+
+<Card title="Configuration" icon="settings" href="/plugin/configuration">
+  Point the plugin at your project and tune persistence, refresh, and OAuth ports.
+</Card>

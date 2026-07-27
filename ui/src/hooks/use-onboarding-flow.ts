@@ -13,6 +13,7 @@ import {
   describeUpdateUserError,
   encodeStatus,
   getOnboardingStatus,
+  type NonEmptySteps,
   type OnboardingStatusRecord,
   type OnboardingStepConfig,
 } from "@/lib/onboarding";
@@ -106,7 +107,7 @@ export function useOnboardingFlow(
   config: UseOnboardingFlowConfig = {},
 ): UseOnboardingFlowResult {
   const auth = useAuth();
-  const steps = useMemo(() => {
+  const steps = useMemo<NonEmptySteps>(() => {
     const resolved = config.steps ?? DEFAULT_STEPS;
     assertValidSteps(resolved);
     return resolved;
@@ -189,12 +190,15 @@ export function useOnboardingFlow(
         0,
         currentSteps.findIndex((s) => s.id === view.nextStep),
       );
+      // index is clamped to 0 and the list is non-empty, so the fallback is
+      // unreachable — it just spares the reader a non-null assertion.
+      const startStep = currentSteps[index] ?? currentSteps[0];
       let error: AuthError | null = null;
       if (options.writeInitial) {
         const record: OnboardingStatusRecord = {
           v: 1,
           complete: false,
-          nextStep: currentSteps[index].id,
+          nextStep: startStep.id,
           steps: { ...stepsDoneRef.current },
         };
         const result = await auth.updateUser({
@@ -410,10 +414,13 @@ export function useOnboardingFlow(
         ...stepsDoneRef.current,
         [step.id]: "done",
       };
+      // Not last => stepIndex + 1 is in bounds, so this is only null when the
+      // flow is finishing.
+      const nextStep = isLast ? null : currentSteps[snap.stepIndex + 1];
       const record: OnboardingStatusRecord = {
         v: 1,
         complete: isLast,
-        nextStep: isLast ? null : currentSteps[snap.stepIndex + 1].id,
+        nextStep: nextStep?.id ?? null,
         steps: nextDone,
       };
       update({

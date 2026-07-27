@@ -28,7 +28,7 @@ function userWithMetadata(meta: Record<string, unknown>): User {
   };
 }
 
-const twoSteps: OnboardingStepConfig[] = [
+const twoSteps: [OnboardingStepConfig, OnboardingStepConfig] = [
   {
     id: "profile",
     title: "Your profile",
@@ -158,7 +158,7 @@ describe("DEFAULT_STEPS", () => {
       id: "profile",
       title: "Your profile",
     });
-    expect(DEFAULT_STEPS[0].fields).toEqual([
+    expect(DEFAULT_STEPS[0]?.fields).toEqual([
       {
         kind: "text",
         name: "display_name",

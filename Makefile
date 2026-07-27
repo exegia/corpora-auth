@@ -13,18 +13,32 @@ SHELL := /bin/bash
 REPO_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 SCRIPTS   := $(REPO_ROOT)/scripts
 EXAMPLE   := $(REPO_ROOT)/examples/tauri-app
+WEB       := $(REPO_ROOT)/examples/web-app
 
 BUN ?= bun
 
 # Workspace package names, so the targets read the way the registry does.
+# Every script in every workspace package.json has a target below; `make help`
+# is the index. The mapping is:
+#
+#   guest-js  @exegia/plugin-supabase-auth  build test
+#   ui        @exegia/auth-ui              build test typecheck
+#   tauri-app tauri-app                    dev build preview tauri test
+#   web-app   web-app                      dev build start
+#
 PKG_BINDINGS := @exegia/plugin-supabase-auth
 PKG_UI       := @exegia/auth-ui
+PKG_TAURI    := tauri-app
+PKG_WEB      := web-app
 CRATE        := tauri-plugin-supabase-auth
+
+# Extra arguments forwarded by the `tauri` passthrough target: make tauri ARGS="info"
+ARGS ?=
 
 # Where `make pack` drops inspectable tarballs.
 DIST := $(REPO_ROOT)/dist-packages
 
-export REPO_ROOT SCRIPTS EXAMPLE BUN PKG_BINDINGS PKG_UI CRATE DIST
+export REPO_ROOT SCRIPTS EXAMPLE WEB BUN PKG_BINDINGS PKG_UI PKG_TAURI PKG_WEB CRATE DIST
 
 .DEFAULT_GOAL := help
 
@@ -44,7 +58,7 @@ help: ## Show this help
 			printf "    \033[36m%-20s\033[0m %s\n", target, $$2 }' \
 		$(REPO_ROOT)/Makefile
 	@echo ""
-	@echo "  Example app targets: make -C examples/tauri-app help"
+	@echo "  Tauri example targets: make -C examples/tauri-app help"
 	@echo ""
 
 # ---------------------------------------------------------------- setup
@@ -60,6 +74,42 @@ install: ## bun install across the workspace
 .PHONY: doctor
 doctor: ## Diagnose the toolchain, Supabase stack and ports
 	@"$(EXAMPLE)/scripts/doctor.sh"
+
+# ---------------------------------------------------------------- run
+
+# Both example apps render @exegia/auth-ui, which imports the bindings package.
+# That resolves to guest-js/dist through the workspace link, so the bindings
+# have to exist before either dev server can start — the same ordering
+# `test:ui` relies on.
+#
+# The web example goes one step further: its tsconfig maps @exegia/auth-ui to
+# ui/dist (see the comment there), and bun honours tsconfig paths, so it needs
+# the built UI kit rather than just the bindings. `build-ui` already depends on
+# `build-bindings`.
+
+dev\:web: dev-web ## Run the web example (Bun dev server, hot reload, port 3000)
+dev-web: build-ui
+	@cd "$(WEB)" && $(BUN) run dev
+
+dev\:tauri: dev-tauri ## Run the Tauri example (Vite + Tauri)
+dev-tauri: build-bindings
+	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" dev
+
+dev\:mcp: dev-mcp ## Run the Tauri example with window.__TAURI__ exposed, for tauri-mcp
+dev-mcp: build-bindings
+	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" dev-mcp
+
+start\:web: start-web ## Serve the web example in production mode
+start-web: build-ui
+	@cd "$(WEB)" && $(BUN) run start
+
+preview\:tauri: preview-tauri ## Serve the built Tauri frontend without Tauri
+preview-tauri:
+	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" preview
+
+.PHONY: tauri
+tauri: ## Run the Tauri CLI in the example app: make tauri ARGS="info"
+	@cd "$(EXAMPLE)" && $(BUN) run tauri $(ARGS)
 
 # ---------------------------------------------------------------- build
 
@@ -82,9 +132,14 @@ build\:plugin: build-plugin ## Verify the Rust crate packages cleanly for crates
 build-plugin:
 	@"$(SCRIPTS)/build-plugin.sh"
 
-build\:example: build-example ## Build the example app's frontend bundle
+build\:example: build-example ## Build the Tauri example's frontend bundle
+build\:tauri: build-example ## Alias for build:example
 build-example: build-ui
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" build
+
+build\:web: build-web ## Build the web example's frontend bundle
+build-web: build-ui
+	@cd "$(WEB)" && $(BUN) run build
 
 build\:docker: build-docker ## Build the Linux CI toolchain image (CI publishes it to GHCR)
 build-docker:
@@ -108,6 +163,14 @@ test\:plugin: test-rust ## Alias for test:rust
 test-rust:
 	@cd "$(REPO_ROOT)" && cargo test
 
+test\:bindings: test-bindings ## Run @exegia/plugin-supabase-auth's test script
+test-bindings:
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_BINDINGS)' test
+
+test\:workspaces: test-workspaces ## Run the `test` script in every workspace package
+test-workspaces: build-bindings
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '*' test
+
 # The UI suite imports @exegia/plugin-supabase-auth, which resolves through the
 # workspace link to guest-js/dist — so the bindings have to be built first. This
 # is the same ordering the `web` job in .github/workflows/ci.yml relies on.
@@ -119,9 +182,9 @@ test\:e2e: test-e2e ## Full auth lifecycle against the local Supabase stack
 test-e2e:
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" test-e2e
 
-test\:example: test-example ## Run the example app's own test script
+test\:example: test-example ## Run the Tauri example's own test script
 test-example:
-	@cd "$(REPO_ROOT)" && $(BUN) run --filter tauri-app test
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_TAURI)' test
 
 # ---------------------------------------------------------------- quality
 
@@ -140,9 +203,20 @@ fmt: ## Format the Rust sources
 	@cd "$(EXAMPLE)/src-tauri" && cargo fmt
 
 .PHONY: typecheck
-typecheck: ## tsc --noEmit across the TypeScript packages
+typecheck: typecheck-ui typecheck-tauri typecheck-web ## tsc --noEmit across the TypeScript packages
+
+typecheck\:ui: typecheck-ui ## tsc --noEmit for @exegia/auth-ui
+typecheck-ui:
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' typecheck
+
+typecheck\:tauri: typecheck-tauri ## tsc --noEmit for the Tauri example
+typecheck-tauri:
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" typecheck
+
+# Resolves @exegia/auth-ui through ui/dist, so the UI kit has to be built first.
+typecheck\:web: typecheck-web ## tsc --noEmit for the web example
+typecheck-web: build-ui
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_WEB)' typecheck
 
 # ---------------------------------------------------------------- supabase
 
@@ -173,8 +247,12 @@ clean-dry:
 	@"$(SCRIPTS)/clean.sh" --dry-run
 
 # Declared last so both spellings of every target are covered in one place.
-.PHONY: build\:bindings build\:ui build\:plugin build\:example build\:docker docker\:shell
-.PHONY: build-bindings build-ui build-plugin build-example build-docker docker-shell
-.PHONY: test\:rust test\:plugin test\:ui test\:e2e test\:example
-.PHONY: test-rust test-ui test-e2e test-example
+.PHONY: dev\:web dev\:tauri dev\:mcp start\:web preview\:tauri
+.PHONY: dev-web dev-tauri dev-mcp start-web preview-tauri
+.PHONY: build\:bindings build\:ui build\:plugin build\:example build\:tauri build\:web build\:docker docker\:shell
+.PHONY: build-bindings build-ui build-plugin build-example build-web build-docker docker-shell
+.PHONY: test\:rust test\:plugin test\:bindings test\:workspaces test\:ui test\:e2e test\:example
+.PHONY: test-rust test-bindings test-workspaces test-ui test-e2e test-example
+.PHONY: typecheck\:ui typecheck\:tauri typecheck\:web
+.PHONY: typecheck-ui typecheck-tauri typecheck-web
 .PHONY: clean\:build clean\:dry clean-build clean-dry

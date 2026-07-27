@@ -1,0 +1,97 @@
+---
+title: "Primitives"
+description: "The coss and Base UI components the blocks are assembled from, re-exported for composition."
+---
+
+The blocks are built from a small set of styled primitives. They are exported from the package index so a custom screen can match the kit without reimplementing its geometry, motion or focus behaviour.
+
+```tsx
+import { Button, Card, Field, FieldLabel, Input, Spinner } from "@exegia/auth-ui";
+import "@exegia/auth-ui/styles.css";
+```
+
+<Note>
+These wrap [coss](https://coss.com/ui) components over Base UI. Where a wrapper exists, the underlying primitive is also re-exported under a `*Primitive` name (`FieldPrimitive`, `FormPrimitive`, `InputPrimitive`, `OTPFieldPrimitive`, `SeparatorPrimitive`) so you can drop to the unstyled component when the wrapper is in the way.
+</Note>
+
+## What's exported
+
+| Module | Exports |
+| --- | --- |
+| Alert | `Alert`, `AlertTitle`, `AlertDescription`, `AlertAction` |
+| Button | `Button`, `buttonVariants` |
+| Card | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardFrame`, `CardFrameHeader`, `CardFrameTitle`, `CardFrameDescription`, `CardFrameAction`, `CardFrameFooter` |
+| Field | `Fieldset`, `FieldsetLegend`, `Field`, `FieldLabel`, `FieldItem`, `FieldDescription`, `FieldError`, `FieldControl`, `FieldValidity`, `FieldPrimitive` |
+| Form | `Form`, `FormPrimitive` |
+| Input | `Input`, `InputPrimitive` |
+| Label | `Label` |
+| OTP field | `OTPField`, `OTPFieldInput`, `OTPFieldSeparator`, `OTPFieldPrimitive` |
+| Provider icon | `ProviderIcon` |
+| Separator | `Separator`, `SeparatorPrimitive` |
+| Spinner | `Spinner` |
+
+## Composing a custom screen
+
+Wrapping your own markup in a `Card` with `data-slot="auth-block"` puts it inside the kit's typography and motion scope, so a bespoke screen sits next to a block without a visual seam.
+
+```tsx
+import { useState } from "react";
+import { Button, Card, Field, FieldLabel, Input, useAuth } from "@exegia/auth-ui";
+
+function CustomSignIn() {
+  const auth = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  return (
+    <Card data-slot="auth-block">
+      <Field>
+        <FieldLabel>Email</FieldLabel>
+        <Input
+          name="email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </Field>
+      <Field>
+        <FieldLabel>Password</FieldLabel>
+        <Input
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </Field>
+      <Button onClick={() => auth.signIn({ email, password })}>Sign in</Button>
+    </Card>
+  );
+}
+```
+
+## ProviderIcon
+
+The brand marks used on the OAuth buttons, as inline SVG rather than an icon dependency.
+
+```tsx
+import { ProviderIcon } from "@exegia/auth-ui";
+
+<ProviderIcon provider="github" />;
+```
+
+Google renders in its own colours. The monochrome marks inherit `currentColor`, so they invert with the theme on their own.
+
+## Also exported
+
+The package index re-exports a few non-component helpers used by the blocks:
+
+| Export | What it is |
+| --- | --- |
+| `defaultErrorMessages`, `resolveMessage`, `ErrorMessageOverrides` | The user-facing copy layer over `AuthErrorKind` |
+| `emailSchema`, `passwordSchema`, `otpSchema`, `signInSchema`, `signUpSchema`, `updatePasswordSchema`, `buildSignUpSchema`, `buildUpdatePasswordSchema`, `validate` | The zod schemas the forms validate against |
+| `DEFAULT_STEPS`, `getOnboardingStatus`, `schemaForStep`, `OnboardingStepConfig`, `FieldConfig` | Onboarding configuration types and helpers |
+| `providerLabel` | The display label for a `Provider` |
+| `cn` | The `clsx` + `tailwind-merge` class combiner |
+| `Identity`, `Passkey`, `PasskeyCapability` | Re-exported from the bindings package for convenience |

@@ -12,7 +12,8 @@ links = "tauri-plugin-supabase-auth"
 # `make build:plugin` prints the resulting file list, so this stays honest.
 exclude = [
   "/examples", "/ui", "/guest-js", "/node_modules", "/.github", "/assets",
-  "/specs", "/.specify", "/.claude", "/scripts", "/supabase",
+  "/docs", "/specs", "/.specify", "/.claude", "/scripts", "/supabase",
+  "/skills", "/skills-lock.json",
   "/Makefile", "/package.json", "/bun.lock", "/CLAUDE.md",
   "/.prettierrc", "/.prettierignore", "/.gitguardian.yaml",
 ]

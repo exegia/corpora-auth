@@ -56,7 +56,7 @@ function safeStringify(value: unknown): string {
  * bugs — they are "you have not pasted a client secret yet" — so the hint
  * points at the section that lists what to supply.
  */
-export const SETUP_DOC = "README.md § Configuration you must supply";
+export const SETUP_DOC = "docs/plugin/provider-setup.mdx";
 
 /**
  * A hint per error kind. The plugin's own messages are developer-oriented; a
