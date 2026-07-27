@@ -1,3 +1,11 @@
+> **This package is a bun workspace member — never run `bun install` in this
+> directory.** Install from the repo root (`make setup`). A local install creates
+> a second `bun.lock` and a private `node_modules` with its own copy of React,
+> and two Reacts in one bundle break every hook with
+> `Cannot read properties of null (reading 'useMemo')`. Shared dependency
+> versions come from the root `package.json` catalogs (`catalog:`).
+>
+> The rest of this file is generic Bun guidance from `bun init`.
 
 Default to using Bun instead of Node.js.
 

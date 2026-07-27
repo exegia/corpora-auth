@@ -35,6 +35,7 @@ BUILD_PATHS=(
   "examples/tauri-app/src-tauri/gen"
   "examples/tauri-app/dist"
   "examples/tauri-app/.mcp-artifacts"
+  "examples/web-app/dist"
   "ui/dist"
   "guest-js/dist"
   "dist-packages"
@@ -48,6 +49,7 @@ DEP_PATHS=(
   "ui/node_modules"
   "guest-js/node_modules"
   "examples/tauri-app/node_modules"
+  "examples/web-app/node_modules"
 )
 
 TARGETS=("${BUILD_PATHS[@]}")
