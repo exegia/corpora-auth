@@ -27,5 +27,6 @@ export * from "./components/ui/form";
 export * from "./components/ui/input";
 export * from "./components/ui/label";
 export * from "./components/ui/otp-field";
+export * from "./components/ui/provider-icon";
 export * from "./components/ui/separator";
 export * from "./components/ui/spinner";
