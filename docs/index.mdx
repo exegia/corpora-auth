@@ -1,0 +1,50 @@
+---
+title: "Introduction"
+description: "Supabase authentication for Tauri v2 desktop apps: a Rust plugin, typed webview bindings, and a React UI kit shipped from one lockstep version."
+---
+
+Desktop authentication has a few problems the web does not: token storage that is not a plain-text JSON file, OAuth redirects with no web server to redirect to, sessions that survive a restart, and background refreshes that must never race a sign-out. This plugin solves them once and exposes the result to both sides of a Tauri app.
+
+## What ships
+
+| Artifact | What it is |
+| --- | --- |
+| `tauri-plugin-supabase-auth` | The Rust plugin. Owns the session, the keychain, the OAuth loopback, and the refresh task |
+| `@exegia/plugin-supabase-auth` | Typed webview bindings over `invoke`, plus push auth-state events |
+| `@exegia/auth-ui` | React blocks and hooks built on the bindings: sign-in, sign-up, OTP, recovery, social, passkeys, account settings |
+
+All three are versioned in lockstep from one repository.
+
+## Guarantees worth knowing
+
+<Columns cols={2}>
+  <Card title="Refresh tokens never reach the webview" icon="shield">
+    Sessions crossing the IPC boundary are sanitized. Only Rust sees the full session.
+  </Card>
+  <Card title="No zombie sessions" icon="lock">
+    Every mutation serializes through one lock held across the network await, so a sign-out racing a background refresh always ends fully signed out.
+  </Card>
+  <Card title="Offline-friendly" icon="plane">
+    Launching offline with an unexpired stored session keeps you signed in; refresh retries in the background. Corrupt or revoked stored sessions degrade to signed-out, never a crash.
+  </Card>
+  <Card title="Nothing hangs" icon="timer">
+    Every call resolves or rejects within a 15 second network budget. A stalled request surfaces as a `network` error, not a pending promise.
+  </Card>
+</Columns>
+
+## Where to go next
+
+<Columns cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install, configure, and sign someone in.
+  </Card>
+  <Card title="Components" icon="layout-dashboard" href="/components/overview">
+    The UI kit blocks, with previews captured from a running app.
+  </Card>
+  <Card title="JavaScript API" icon="code" href="/plugin/javascript-api">
+    Every binding, and the structured error type behind each rejection.
+  </Card>
+  <Card title="Permissions" icon="key" href="/plugin/permissions">
+    The default command set, and the account mutations you opt into.
+  </Card>
+</Columns>

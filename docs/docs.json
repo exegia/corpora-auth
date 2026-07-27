@@ -1,0 +1,81 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "tauri-plugin-supabase-auth",
+  "description": "Supabase authentication for Tauri v2 desktop apps, with typed webview bindings and a React UI kit.",
+  "colors": {
+    "primary": "#0D7A54",
+    "light": "#3FCF8E",
+    "dark": "#159463"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Get started",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": ["index", "quickstart"]
+          }
+        ]
+      },
+      {
+        "tab": "Plugin",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": [
+              "plugin/installation",
+              "plugin/configuration",
+              "plugin/permissions",
+              "plugin/provider-setup"
+            ]
+          },
+          {
+            "group": "API",
+            "pages": [
+              "plugin/javascript-api",
+              "plugin/rust-api",
+              "plugin/errors"
+            ]
+          },
+          {
+            "group": "Flows",
+            "pages": ["plugin/oauth", "plugin/passkeys"]
+          }
+        ]
+      },
+      {
+        "tab": "Components",
+        "groups": [
+          {
+            "group": "UI kit",
+            "pages": [
+              "components/overview",
+              "components/sign-in",
+              "components/sign-up",
+              "components/account"
+            ]
+          },
+          {
+            "group": "Building blocks",
+            "pages": ["components/hooks", "components/primitives"]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/exegia/corpora-auth"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/exegia/corpora-auth"
+    }
+  }
+}
