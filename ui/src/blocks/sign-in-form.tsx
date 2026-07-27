@@ -70,7 +70,7 @@ export function SignInForm({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
       {showSocial && showSocial.length > 0 ? (
         <>
           <SocialButtons

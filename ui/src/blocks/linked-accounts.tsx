@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import type { AuthError, Identity, Provider } from "@exegia/plugin-supabase-auth";
 import { Button } from "@/components/ui/button";
+import { ProviderIcon } from "@/components/ui/provider-icon";
 import { Spinner } from "@/components/ui/spinner";
 import { useIdentities } from "@/hooks/use-identities";
 import { useSession } from "@/hooks/use-session";
@@ -57,7 +58,7 @@ export function LinkedAccounts({
 
   if (sessionStatus === "signedOut") {
     return (
-      <p className={cn("text-muted-foreground text-sm", className)}>
+      <p data-slot="auth-block" className={cn("text-muted-foreground text-sm", className)}>
         Sign in to manage the accounts connected to your profile.
       </p>
     );
@@ -66,7 +67,7 @@ export function LinkedAccounts({
   if (sessionStatus === "loading" || status === "loading") {
     return (
       <div
-        className={cn(
+ data-slot="auth-block"        className={cn(
           "flex items-center gap-2 text-muted-foreground text-sm",
           className,
         )}
@@ -79,7 +80,7 @@ export function LinkedAccounts({
 
   if (status === "error" && error) {
     return (
-      <div className={cn("flex flex-col gap-2", className)}>
+      <div data-slot="auth-block" className={cn("flex flex-col gap-2", className)}>
         <AuthErrorAlert
           action={
             <Button
@@ -133,27 +134,37 @@ export function LinkedAccounts({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-3", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-3", className)}>
       {actionError ? (
         <AuthErrorAlert error={actionError} overrides={errorMessages} />
       ) : null}
 
       {list.length > 0 ? (
         <ul aria-label="Connected accounts" className="flex flex-col gap-2">
-          {list.map((identity) => {
+          {list.map((identity, index) => {
             const label = providerLabel(identity.provider);
             return (
               <li
-                className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-2xl border px-3 py-2"
+                data-motion="pop"
                 key={identity.identityId}
+                // 40ms per row (--duration-stagger). Capped so a long identity
+                // list never leaves the last row arriving noticeably late.
+                style={{ animationDelay: `${Math.min(index, 5) * 40}ms` }}
               >
-                <div className="flex min-w-0 flex-col">
-                  <span className="font-medium text-sm">{label}</span>
-                  {identity.email ? (
-                    <span className="truncate text-muted-foreground text-xs">
-                      {identity.email}
-                    </span>
-                  ) : null}
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <ProviderIcon
+                    className="size-4 text-muted-foreground"
+                    provider={identity.provider}
+                  />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="font-medium text-sm">{label}</span>
+                    {identity.email ? (
+                      <span className="truncate text-muted-foreground text-xs">
+                        {identity.email}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <Button
                   aria-describedby={lastMethod ? lastMethodNoteId : undefined}
@@ -185,6 +196,7 @@ export function LinkedAccounts({
 
       {connectable.map((provider) => (
         <Button
+          className="justify-start gap-3"
           disabled={busy}
           key={provider}
           loading={linkInFlight === provider}
@@ -192,7 +204,13 @@ export function LinkedAccounts({
           type="button"
           variant="outline"
         >
-          Connect {providerLabel(provider)}
+          <ProviderIcon
+            className="in-[[data-slot=button]:hover]:scale-110 transition-transform duration-(--duration-quick) ease-(--ease-bounce)"
+            provider={provider}
+          />
+          <span className="flex-1 text-center">
+            Connect {providerLabel(provider)}
+          </span>
         </Button>
       ))}
 
