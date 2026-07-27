@@ -1,0 +1,125 @@
+---
+title: "Rust API"
+description: "Authenticate from the Rust side of a Tauri app, with full sessions and state-change callbacks."
+---
+
+The plugin manages a `SupabaseAuth<R>` handle. Reach it from any `Manager` — an `AppHandle`, a `Window`, or the `App` itself — through the `SupabaseAuthExt` trait.
+
+```rust
+use tauri_plugin_supabase_auth::SupabaseAuthExt;
+
+let auth = app.supabase_auth();
+let session = auth
+    .sign_in_with_password("person@example.com", "correct horse battery")
+    .await?;
+```
+
+<Info>
+Rust callers receive the full `Session`, including the refresh token. Sanitization happens at the command boundary, so only the webview sees a stripped session.
+</Info>
+
+## Session lifecycle
+
+```rust
+use tauri_plugin_supabase_auth::{OtpKind, OtpTarget};
+
+auth.sign_up("person@example.com", "hunter22", None).await?;   // -> SignUpResult
+auth.sign_in_with_password("person@example.com", "hunter22").await?; // -> Session
+
+auth.sign_in_with_otp(OtpTarget::Email("person@example.com".into()), None).await?;
+auth.verify_otp(OtpTarget::Email("person@example.com".into()), "123456", OtpKind::Email).await?;
+
+auth.session().await;          // -> Option<Session>
+auth.user().await;             // -> Option<User>
+auth.refresh_session().await?; // -> Session
+auth.sign_out().await?;
+```
+
+`sign_up`'s third argument is optional `serde_json::Value` stored as `user_metadata`.
+
+## OAuth
+
+```rust
+let session = auth.start_oauth_flow("github", Some(vec!["read:user".into()])).await?;
+auth.cancel_oauth_flow().await;
+```
+
+`start_oauth_flow` opens the system browser, binds the loopback listener, and resolves when the PKCE exchange completes. See [OAuth](/plugin/oauth).
+
+## Account
+
+```rust
+auth.reset_password_for_email("person@example.com", None).await?;
+auth.update_user(Some("new@example.com".into()), None, None).await?; // -> User
+
+auth.identities().await?;                    // -> Vec<Identity>
+auth.link_identity("github", None).await?;
+auth.unlink_identity(&identity_id).await?;   // -> Vec<Identity>
+```
+
+<Note>
+Permissions in `capabilities/` gate the **webview**, not Rust. A command excluded from the capability set is still callable from Rust — the permission model exists to limit what untrusted frontend code can reach.
+</Note>
+
+## Passkeys
+
+```rust
+auth.passkey_capability();                      // -> PasskeyCapability, no network
+auth.register_passkey().await?;                 // -> PasskeyRegistrationResult
+auth.sign_in_with_passkey().await?;             // -> PasskeySignInResult
+auth.list_passkeys().await?;                    // -> Vec<Passkey>
+auth.rename_passkey(&id, "MacBook Touch ID").await?;
+auth.delete_passkey(&id).await?;
+```
+
+The two-step surface for app-supplied ceremonies is `passkey_registration_options` / `passkey_registration_verify` and `passkey_authentication_options` / `passkey_authentication_verify`.
+
+## State-change callbacks
+
+`AuthCore` is deliberately Tauri-free: it emits to registered callbacks, and the plugin registers one that forwards to `AppHandle::emit` for the webview. You can register your own.
+
+```rust
+let handle = auth.on_auth_state_change(|payload| {
+    println!("auth: {:?} for {:?}", payload.event, payload.session.as_ref().map(|s| &s.user.id));
+});
+
+// later
+auth.remove_auth_listener(handle);
+```
+
+The callback receives an `AuthChangePayload { event, session }` with the same events the webview sees.
+
+## Custom ceremony provider
+
+Use `PluginBuilder` instead of `init()` when supplying your own WebAuthn ceremony:
+
+```rust
+use tauri_plugin_supabase_auth::{Availability, CeremonyOutcome, CeremonyProvider, PluginBuilder};
+
+struct MyCeremony;
+
+impl CeremonyProvider for MyCeremony {
+    fn availability(&self) -> Availability {
+        Availability::Available
+    }
+    fn create(&self, options_json: &str) -> CeremonyOutcome {
+        // OS registration prompt; return the raw WebAuthn credential JSON
+        todo!()
+    }
+    fn get(&self, options_json: &str) -> CeremonyOutcome {
+        // OS assertion prompt
+        todo!()
+    }
+}
+
+tauri::Builder::default()
+    .plugin(PluginBuilder::new().ceremony_provider(MyCeremony).build())
+```
+
+An app-supplied provider wins over the built-in for the target OS. See [Passkeys](/plugin/passkeys).
+
+## Concurrency model
+
+Every session mutation — sign-in, sign-up, sign-out, refresh, restore, OAuth completion — serializes through a single mutex held across the network await. That is what makes a sign-out racing a background refresh always end fully signed out: the refresh re-checks state under the lock and cannot resurrect a terminated session.
+
+If you add mutations on top of this handle, keep them inside the same discipline rather than reading state, awaiting, and writing back.

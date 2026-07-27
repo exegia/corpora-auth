@@ -1,0 +1,95 @@
+---
+title: "Provider setup"
+description: "The Supabase-side configuration that email/password does not need: OAuth providers, account linking, and passkey prerequisites."
+---
+
+Email/password, magic links and one-time codes work against a fresh local stack with no credentials at all. Everything below needs something only the project owner can supply.
+
+<Note>
+For a local stack these values live in `supabase/config.toml`, which is read only at boot. After any change, run `supabase stop && supabase start`.
+</Note>
+
+## GitHub sign-in
+
+Create an OAuth app at [github.com/settings/developers](https://github.com/settings/developers).
+
+Set its **Authorization callback URL** to GoTrue, not to the plugin:
+
+```
+http://127.0.0.1:54321/auth/v1/callback
+```
+
+For a hosted project that is `https://<project>.supabase.co/auth/v1/callback`.
+
+```bash
+export SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID=Ov23li...
+export SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET=...
+```
+
+Then enable the provider:
+
+```toml supabase/config.toml
+[auth.external.github]
+enabled = true
+```
+
+## Google sign-in
+
+Same shape, from [console.cloud.google.com](https://console.cloud.google.com/apis/credentials) → **OAuth client ID**, type *Web application*, with the same GoTrue callback URL.
+
+```bash
+export SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
+export SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
+```
+
+```toml supabase/config.toml
+[auth.external.google]
+enabled = true
+skip_nonce_check = true
+```
+
+<Warning>
+`skip_nonce_check = true` is required for loopback sign-in. The nonce cannot be verified over a local redirect.
+</Warning>
+
+## Redirect URLs
+
+Both providers depend on `additional_redirect_urls`. The plugin binds the first free port from `oauth.callbackPorts` and asks GoTrue to redirect to `http://127.0.0.1:<port>/callback`. The list is matched exactly, so every candidate port must be present.
+
+```toml supabase/config.toml
+[auth]
+additional_redirect_urls = [
+  "http://127.0.0.1:43823/callback",
+  "http://127.0.0.1:43824/callback",
+  "http://127.0.0.1:43825/callback",
+]
+```
+
+Change `oauth.callbackPorts` in `tauri.conf.json` and this list has to change with it, or the round-trip dies after the consent screen with a redirect error that is not a structured plugin error.
+
+## Account linking
+
+```toml supabase/config.toml
+[auth]
+enable_manual_linking = true
+```
+
+Off by default. Without it, `<LinkedAccounts />` can list identities but cannot attach one.
+
+## Passkeys
+
+The server side needs `[auth.passkey] enabled = true` plus the relying-party settings described in [Passkeys](/plugin/passkeys). What you supply beyond that is platform-dependent:
+
+| Platform | What you need |
+| --- | --- |
+| Windows | Nothing beyond `plugins.supabase-auth.passkeys.origin` in `tauri.conf.json`, listed in `rp_origins` |
+| macOS | An Apple Developer account, a provisioning profile whose App ID carries the Associated Domains capability, and an [AASA file](https://developer.apple.com/documentation/xcode/supporting-associated-domains) served over HTTPS at `https://<rp-id>/.well-known/apple-app-site-association` |
+| Linux | Not supported — supply your own ceremony via `PluginBuilder::ceremony_provider` |
+
+## Local development
+
+```bash
+make supabase-up     # local stack; mail UI at http://127.0.0.1:54324
+```
+
+The mail UI catches confirmation and recovery messages, so email flows are testable end to end without a real inbox.

@@ -1,0 +1,93 @@
+---
+title: "Errors"
+description: "Every rejection is a structured AuthError with an exhaustive, switchable kind."
+---
+
+No binding ever rejects with a bare string. Narrow the rejection with `isAuthError()` and switch on `kind`.
+
+```ts
+import { signInWithPassword, isAuthError } from "@exegia/plugin-supabase-auth";
+
+try {
+  await signInWithPassword({ email, password });
+} catch (e) {
+  if (!isAuthError(e)) throw e; // not from the plugin — rethrow
+
+  switch (e.kind) {
+    case "invalidCredentials":
+      return setError("Email or password is incorrect.");
+    case "rateLimited":
+      return setError(`Try again in ${e.retryAfterSecs ?? 60}s.`);
+    default:
+      return setError(e.message);
+  }
+}
+```
+
+```ts
+interface AuthError {
+  kind: AuthErrorKind; // the 16 values below — exhaustive
+  message: string; // developer-oriented copy
+  retryAfterSecs?: number; // set on rateLimited when the server reports it
+}
+```
+
+<Note>
+`message` is written for developers. For user-facing copy, use `@exegia/auth-ui` — every block renders resolved messages and accepts per-kind overrides through `errorMessages`.
+</Note>
+
+## Kinds
+
+### Credentials and sign-up
+
+| Kind | Raised when | Typical response |
+| --- | --- | --- |
+| `invalidCredentials` | Wrong email or password | Re-prompt |
+| `emailAlreadyRegistered` | Sign-up hit an existing account | Offer sign-in or reset without confirming the account exists |
+| `emailNotConfirmed` | The account exists but confirmation is pending | Point at the inbox, offer a resend |
+| `otpExpired` | A magic link, one-time code or recovery code expired or was already used | Offer to send a new code |
+
+### Session and flow
+
+| Kind | Raised when | Typical response |
+| --- | --- | --- |
+| `sessionExpired` | Refresh failed and the session is gone | Route to sign-in |
+| `oauthFlowInterrupted` | The browser round-trip was cancelled or never returned | Let the user retry |
+| `rateLimited` | The server throttled the request | Back off using `retryAfterSecs` |
+| `network` | Host unreachable, or the 15 second budget elapsed | Retryable — show a connectivity hint |
+
+### Identities
+
+| Kind | Raised when | Typical response |
+| --- | --- | --- |
+| `identityAlreadyLinked` | The provider identity belongs to another account | The current account is unchanged; explain |
+| `lastSignInMethod` | Unlinking would leave no way in | Refuse and explain |
+
+### Passkeys
+
+| Kind | Raised when | Typical response |
+| --- | --- | --- |
+| `passkeyChallengeExpired` | The WebAuthn challenge timed out | Retry the ceremony |
+| `passkeyVerificationFailed` | The assertion was rejected, often because the credential was deleted server-side | Suggest re-registering |
+| `passkeyUnsupported` | No usable authenticator on this device | Gate the UI on `getPasskeyCapability()` |
+
+### Wiring
+
+| Kind | Raised when | Typical response |
+| --- | --- | --- |
+| `configuration` | Bad plugin config, or the provider is not enabled in Supabase | Developer error — fix the setup |
+| `permissionDenied` | The command is not granted in `capabilities/` | Developer error — [grant the permission](/plugin/permissions) |
+| `unknown` | Anything unmapped | Generic retry |
+
+## Timeouts
+
+Every operation resolves or rejects within a 15 second network budget. A stalled request surfaces as `network` rather than a promise that never settles, so a spinner always has an exit.
+
+The one exception is the OS credential prompt during a passkey ceremony: no network timeout spans it, because the user decides how long it takes. The server's challenge TTL is the effective ceiling there.
+
+## Cancellation is not an error
+
+Two flows report user cancellation as a status rather than a rejection:
+
+- `signInWithPasskey()` and `registerPasskey()` resolve with `{ status: "cancelled" }` when the OS prompt is dismissed.
+- `cancelOAuthFlow()` aborts a browser round-trip; the pending `signInWithOAuth()` call rejects with `oauthFlowInterrupted`, which the UI kit treats as a return to idle rather than a failure.
