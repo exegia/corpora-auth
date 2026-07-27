@@ -1,0 +1,118 @@
+---
+title: "Sign-in blocks"
+description: "SignInForm, OtpForm, SocialButtons and PasskeySignIn, with previews and props."
+---
+
+Four ways in. They compose: `SignInForm` can render `SocialButtons` above itself, and `PasskeySignIn` hides itself when the device cannot prompt, so mounting all three unconditionally is safe.
+
+## SignInForm
+
+Email and password, validated locally before the first network call.
+
+<Frame caption="SignInForm with social buttons and a forgot-password link">
+  <img src="/images/blocks/sign-in-form.png" alt="SignInForm: email and password fields, a forgot-password link, and a Sign in button" width="420" />
+</Frame>
+
+```tsx
+import { SignInForm } from "@exegia/auth-ui";
+
+<SignInForm
+  onSuccess={(session) => navigate("/app")}
+  onForgotPassword={() => setScreen("recover")}
+  showSocial={["google", "github"]}
+/>;
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `onSuccess` | `(session: Session) => void` | Signed in. The session never carries a refresh token |
+| `onError` | `(error: AuthError) => void` | Fires in addition to the inline alert |
+| `onForgotPassword` | `() => void` | Omit to hide the link entirely — routing is yours |
+| `showSocial` | `Provider[]` | Renders `<SocialButtons />` above the form for these providers |
+| `errorMessages` | `ErrorMessageOverrides` | Per-`AuthErrorKind` copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+Permissions: **default set**. `showSocial` needs nothing extra — the OAuth commands are already in it.
+
+## OtpForm
+
+Two steps in one component: request a code for an address, then redeem it. No password anywhere.
+
+<Frame caption="OtpForm, second step">
+  <img src="/images/blocks/otp-form.png" alt="OtpForm second step: a segmented six-box one-time-code field and a Verify code button" width="420" />
+</Frame>
+
+Step two is a segmented six-box field with paste support. An `otpExpired` rejection offers a resend rather than dead-ending.
+
+```tsx
+import { OtpForm } from "@exegia/auth-ui";
+
+<OtpForm onSuccess={(session) => navigate("/app")} />;
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `onSuccess` | `(session: Session) => void` | Code redeemed, session live |
+| `onError` | `(error: AuthError) => void` | Fires alongside the inline alert |
+| `errorMessages` | `ErrorMessageOverrides` | Per-kind copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+Permissions: **default set**.
+
+## SocialButtons
+
+One button per provider you declare, in the order you declare them.
+
+<Frame caption="SocialButtons for Google and GitHub">
+  <img src="/images/blocks/social-buttons.png" alt="SocialButtons: Continue with Google and Continue with GitHub buttons" width="420" />
+</Frame>
+
+While a round-trip is in flight the other buttons disable and a Cancel action appears. Cancel calls `cancelOAuthFlow()`, so the plugin stops waiting on the loopback instead of holding it open for the full flow timeout.
+
+```tsx
+import { SocialButtons } from "@exegia/auth-ui";
+
+<SocialButtons
+  providers={["google", "github"]}
+  onSuccess={() => navigate("/app")}
+/>;
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `providers` | `Provider[]` **(required)** | Which buttons to render, in order |
+| `onSuccess` | `(session: Session) => void` | Round-trip completed |
+| `onError` | `(error: AuthError) => void` | Fires alongside the inline alert |
+| `errorMessages` | `ErrorMessageOverrides` | Per-kind copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+Permissions: **default set** (`allow-start-oauth-flow`, `allow-cancel-oauth-flow`). The providers themselves need [project configuration](/plugin/provider-setup).
+
+## PasskeySignIn
+
+Discoverable sign-in — no email typed first; the OS prompt picks the credential.
+
+<Frame caption="PasskeySignIn">
+  <img src="/images/blocks/passkey-sign-in.png" alt="PasskeySignIn: a single Sign in with a passkey button" width="420" />
+</Frame>
+
+It renders nothing at all while the device capability is still unknown, and nothing when `getPasskeyCapability()` reports the device cannot prompt — so mounting it unconditionally is safe and no feature-detection branch is needed in your layout. A cancelled OS prompt is not a failure: it returns silently to idle and never reaches `onError`.
+
+```tsx
+import { PasskeySignIn, SignInForm } from "@exegia/auth-ui";
+
+<>
+  <PasskeySignIn label="Use Touch ID" onSignedIn={() => navigate("/app")} />
+  <SignInForm onSuccess={() => navigate("/app")} />
+</>;
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `onSignedIn` | `(session: Session) => void` | Assertion verified, session live |
+| `onError` | `(error: AuthError) => void` | Real failures only — never a cancelled prompt |
+| `label` | `string` | Button label. Default: "Sign in with a passkey" |
+| `errorMessages` | `ErrorMessageOverrides` | Per-kind copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+Permissions: `allow-sign-in-with-passkey`, `allow-get-passkey-capability` (opt-in), plus [passkeys enabled on the project](/plugin/passkeys).
