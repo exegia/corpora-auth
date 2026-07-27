@@ -2,6 +2,18 @@
 @import "@exegia/auth-ui/styles.css";
 
 /*
+ * Tailwind only scans this app's own sources by default, so utilities used
+ * *only* inside the kit's components (`gap-x-3` on the onboarding step list,
+ * for one) never make it into the bundle and those rules silently do nothing.
+ *
+ * Here the symlink resolves to the workspace package, so this scans `ui/src`
+ * directly and picks up kit edits without a rebuild. Consumers installing from
+ * the registry must point at `dist` instead — `files` ships only that, and the
+ * compiled JS still carries the class names as string literals.
+ */
+@source "../node_modules/@exegia/auth-ui/src";
+
+/*
  * Palette for the example app.
  *
  * `@exegia/auth-ui` is deliberately unopinionated about colour: its stylesheet
