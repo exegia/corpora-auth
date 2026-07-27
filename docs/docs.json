@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "tauri-plugin-supabase-auth",
+  "name": "Tauri Plugin Supabase Auth",
   "description": "Supabase authentication for Tauri v2 desktop apps, with typed webview bindings and a React UI kit.",
   "colors": {
     "primary": "#0D7A54",
