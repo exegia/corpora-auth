@@ -22,8 +22,18 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
 
+    // @exegia/auth-ui resolves to ui/dist rather than ui/src on purpose. The
+    // package's own entry points at src/ (it is consumed as source inside the
+    // workspace), which would pull ui's sources *and its test files* into this
+    // program and type-check them under flags ui does not use
+    // (noUncheckedIndexedAccess). Pointing at the built output means this app
+    // sees exactly what a published consumer sees, and skipLibCheck keeps the
+    // declarations cheap. Bun honours these paths too, so the bundle and the
+    // types come from the same place — run `make build:ui` first, which the
+    // web-app make targets do for you.
     "paths": {
-      "@/*": ["./src/*", "../../ui/src/*"],
+      "@/*": ["./src/*"],
+      "@exegia/auth-ui": ["../../ui/dist"],
     },
 
     // Some stricter flags (disabled by default)
@@ -31,6 +41,6 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
   },
-  "include": ["src", "bun-env.d.ts", "../../ui/src"],
+  "include": ["src", "bun-env.d.ts"],
   "exclude": ["dist", "node_modules"],
 }

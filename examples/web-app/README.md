@@ -25,8 +25,26 @@ make build:web    # production bundle into dist/
 make start:web    # serve the bundle with NODE_ENV=production
 ```
 
-Each depends on `build:bindings`, because `@exegia/auth-ui` imports
-`@exegia/plugin-supabase-auth`, which resolves to `guest-js/dist`.
+Each depends on `build:ui`, because this app resolves `@exegia/auth-ui` through
+`../../ui/dist` rather than through ui's sources — see below.
+
+```bash
+make typecheck:web  # tsc --noEmit
+```
+
+## Why this app reads the UI kit from `ui/dist`
+
+Inside the workspace `@exegia/auth-ui` is normally consumed as source: its
+`main`/`types` point at `src/index.ts`. Doing that here would pull ui's test
+files into this app's TypeScript program, and force this app to re-declare ui's
+*private* `@/` alias in its own `paths` — where it collides with the `@/` this
+app uses for its own `src/`.
+
+So `tsconfig.json` maps `@exegia/auth-ui` to `../../ui/dist`, which is what a
+published consumer resolves, and `skipLibCheck` keeps the declarations cheap.
+Bun honours tsconfig `paths` too, so the bundle and the types come from the same
+place — which is why the targets above build the UI kit first, and why a stale
+`ui/dist` shows up as a stale app.
 
 ## Shared dependency versions
 

@@ -81,9 +81,14 @@ doctor: ## Diagnose the toolchain, Supabase stack and ports
 # That resolves to guest-js/dist through the workspace link, so the bindings
 # have to exist before either dev server can start — the same ordering
 # `test:ui` relies on.
+#
+# The web example goes one step further: its tsconfig maps @exegia/auth-ui to
+# ui/dist (see the comment there), and bun honours tsconfig paths, so it needs
+# the built UI kit rather than just the bindings. `build-ui` already depends on
+# `build-bindings`.
 
 dev\:web: dev-web ## Run the web example (Bun dev server, hot reload, port 3000)
-dev-web: build-bindings
+dev-web: build-ui
 	@cd "$(WEB)" && $(BUN) run dev
 
 dev\:tauri: dev-tauri ## Run the Tauri example (Vite + Tauri)
@@ -95,7 +100,7 @@ dev-mcp: build-bindings
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" dev-mcp
 
 start\:web: start-web ## Serve the web example in production mode
-start-web: build-bindings
+start-web: build-ui
 	@cd "$(WEB)" && $(BUN) run start
 
 preview\:tauri: preview-tauri ## Serve the built Tauri frontend without Tauri
@@ -132,10 +137,8 @@ build\:tauri: build-example ## Alias for build:example
 build-example: build-ui
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" build
 
-# The web example bundles @exegia/auth-ui from source (its package entry points
-# at src/), so it needs the bindings' dist but not ui/dist.
 build\:web: build-web ## Build the web example's frontend bundle
-build-web: build-bindings
+build-web: build-ui
 	@cd "$(WEB)" && $(BUN) run build
 
 build\:docker: build-docker ## Build the Linux CI toolchain image (CI publishes it to GHCR)
@@ -200,9 +203,20 @@ fmt: ## Format the Rust sources
 	@cd "$(EXAMPLE)/src-tauri" && cargo fmt
 
 .PHONY: typecheck
-typecheck: ## tsc --noEmit across the TypeScript packages
+typecheck: typecheck-ui typecheck-tauri typecheck-web ## tsc --noEmit across the TypeScript packages
+
+typecheck\:ui: typecheck-ui ## tsc --noEmit for @exegia/auth-ui
+typecheck-ui:
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' typecheck
+
+typecheck\:tauri: typecheck-tauri ## tsc --noEmit for the Tauri example
+typecheck-tauri:
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" typecheck
+
+# Resolves @exegia/auth-ui through ui/dist, so the UI kit has to be built first.
+typecheck\:web: typecheck-web ## tsc --noEmit for the web example
+typecheck-web: build-ui
+	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_WEB)' typecheck
 
 # ---------------------------------------------------------------- supabase
 
@@ -239,4 +253,6 @@ clean-dry:
 .PHONY: build-bindings build-ui build-plugin build-example build-web build-docker docker-shell
 .PHONY: test\:rust test\:plugin test\:bindings test\:workspaces test\:ui test\:e2e test\:example
 .PHONY: test-rust test-bindings test-workspaces test-ui test-e2e test-example
+.PHONY: typecheck\:ui typecheck\:tauri typecheck\:web
+.PHONY: typecheck-ui typecheck-tauri typecheck-web
 .PHONY: clean\:build clean\:dry clean-build clean-dry
