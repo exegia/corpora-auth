@@ -2,7 +2,7 @@
 #
 # - lifecycle branches target `dev`
 # - only `dev` may target `next`
-# - only `next` may target `main`
+# - only `next` or a `release/*` branch may target `main`
 #
 # Deterministic branch math, so this remains a plain workflow.
 name: PR Base-Branch Policy
@@ -22,6 +22,7 @@ jobs:
       - name: Enforce base-branch policy
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           BASE_REF: ${{ github.base_ref }}
@@ -36,17 +37,23 @@ jobs:
             esac
           }
 
-          # Only next may release into main.
+          # Only next, or an automated release/* branch, may release into main.
           if [ "$BASE_REF" = "main" ]; then
             if [ "$HEAD_REF" = "next" ]; then
               echo "next → main PR — allowed."
               exit 0
             fi
+            case "$HEAD_REF" in
+              release/*)
+                echo "release/* → main PR — allowed (automated release flow)."
+                exit 0
+                ;;
+            esac
             close_comment=$(printf '%s\n' \
               "🚫 **Closed by base-branch policy**" \
               "" \
-              "PRs into \`main\` may only come from \`next\`. This PR targets \`main\` from" \
-              "\`$HEAD_REF\`, which is not allowed." \
+              "PRs into \`main\` may only come from \`next\` or an automated \`release/*\` branch." \
+              "This PR targets \`main\` from \`$HEAD_REF\`, which is not allowed." \
               "" \
               "To ship this change:" \
               "1. Merge your work into \`dev\` (every PR targets \`dev\`)." \
@@ -56,7 +63,7 @@ jobs:
               "" \
               "See \`.github/BRANCH-AND-RELEASE-POLICY.md\`.")
             gh pr comment "$PR_NUMBER" --body "$close_comment"
-            gh pr close "$PR_NUMBER" --comment "Closed by base-branch policy (main only from next)."
+            gh pr close "$PR_NUMBER" --comment "Closed by base-branch policy (main only from next or release/*)."
             exit 0
           fi
 
