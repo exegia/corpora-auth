@@ -1,0 +1,33 @@
+name: Debug bun publish auth
+
+# Throwaway diagnostic for oven-sh/bun#24124 — verifies bun can
+# authenticate against GitHub Packages before trusting the fix in
+# publish-release.yml. Side-effect-free (npm whoami, no publish).
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Try XDG_CONFIG_HOME=$HOME
+        run: |
+          export XDG_CONFIG_HOME="$HOME"
+          echo "HOME=$HOME"
+          echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME"
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > "$XDG_CONFIG_HOME/.npmrc"
+          echo "@exegia:registry=https://npm.pkg.github.com/" >> "$XDG_CONFIG_HOME/.npmrc"
+          cat "$XDG_CONFIG_HOME/.npmrc"
+          echo "--- npm whoami (baseline, should work) ---"
+          npm whoami --registry=https://npm.pkg.github.com || echo "npm whoami FAILED"
+          echo "--- bunx npm whoami ---"
+          bunx npm whoami --registry=https://npm.pkg.github.com || echo "bunx npm whoami FAILED"
+          echo "--- bun pm whoami (bun's own auth check) ---"
+          cd guest-js && bun pm whoami 2>&1 || echo "bun pm whoami FAILED"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
