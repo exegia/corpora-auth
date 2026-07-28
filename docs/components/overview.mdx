@@ -1,0 +1,89 @@
+---
+title: "Overview"
+description: "The @exegia/auth-ui blocks: what they are, how they behave, and how to restyle them."
+---
+
+`@exegia/auth-ui` is a set of drop-in React components built on hooks that talk to the plugin directly. There is no provider or context to mount.
+
+```bash
+bun add @exegia/auth-ui
+```
+
+```tsx
+import { SignInForm } from "@exegia/auth-ui";
+import "@exegia/auth-ui/styles.css";
+```
+
+Every block:
+
+- validates with zod before any network call
+- has explicit loading, success and error states
+- renders its own inline error, and calls `onError` alongside it so you can add telemetry or a failure screen without reimplementing the form
+- is keyboard- and screen-reader-operable, tested with axe
+- accepts `errorMessages` to override any user-facing string per `AuthErrorKind`
+- accepts `className`, merged onto the root element
+
+<Info>
+The previews on these pages are real captures from `examples/tauri-app` running against a local Supabase, cropped to the block. The kit ships no colours of its own — those are the example's neutral palette, and swapping the surface tokens re-skins every block at once.
+</Info>
+
+## The blocks
+
+<Columns cols={3}>
+  <Card title="Sign-in" icon="log-in" href="/components/sign-in">
+    `SignInForm`, `OtpForm`, `SocialButtons`, `PasskeySignIn`
+  </Card>
+  <Card title="Sign-up" icon="user-plus" href="/components/sign-up">
+    `SignUpForm`, `OnboardingFlow`
+  </Card>
+  <Card title="Account" icon="settings" href="/components/account">
+    `ForgotPasswordForm`, `UpdatePasswordForm`, `LinkedAccounts`, `PasskeyManager`
+  </Card>
+</Columns>
+
+Each block's page ends with the Tauri permissions it needs. **Default set** means everything it calls is already in `supabase-auth:default`; anything else has to be granted explicitly in your capabilities. See [Permissions](/plugin/permissions).
+
+## The design language
+
+Built on [coss](https://coss.com/ui) primitives.
+
+- **Pill geometry.** Buttons, inputs and selects are fully rounded; OTP slots and list rows carry the same radius family. Nothing in the kit is square.
+- **Cal Sans 2.0 variable** (`CalSansVF.woff2`, weights 300–700), self-hosted and vendored into the package. It is scoped to `[data-slot="auth-block"]`, so importing the stylesheet re-typefaces the auth screens and not the host app around them.
+- **Provider brand marks** on every OAuth button, inline SVG rather than an icon dependency. Google keeps its own colours; the monochrome marks inherit `currentColor` and invert with the theme.
+- **Spring motion** on the [transitions.dev](https://transitions.dev) token scale, exported from the stylesheet as `--duration-*`, `--ease-*`, `--distance-*` and `--scale-*`. Entrances overshoot, surfaces settle, dismissals never bounce. Buttons lift on hover and compress on press; step swaps slide in; rows stagger 40 ms apart. All of it is behind `prefers-reduced-motion`.
+
+## Styling
+
+The kit uses shadcn-style surface tokens, so overriding them restyles every block at once.
+
+### Tailwind consumers
+
+Tailwind only scans your own sources, so utilities used exclusively inside the kit are never generated and those rules silently do nothing. Add the package as a source:
+
+```css
+@import "tailwindcss";
+@source "../node_modules/@exegia/auth-ui/dist";
+```
+
+Use `dist`, not `src` — that is what the published package ships, and the compiled JavaScript still carries the class names as string literals.
+
+### Restoring your own typeface
+
+```css
+[data-slot="auth-block"] {
+  font-family: inherit;
+}
+```
+
+The font file rides along in `dist/fonts/` under OFL-1.1 with the licence included, and the `@font-face` `url()` is relative to the stylesheet, so it resolves the same whether you consume the workspace package or the published tarball.
+
+## Below the blocks
+
+<Columns cols={2}>
+  <Card title="Hooks" icon="anchor" href="/components/hooks">
+    `useSession`, `useAuth`, `useIdentities`, `usePasskeys`, and the onboarding hooks — for building your own UI.
+  </Card>
+  <Card title="Primitives" icon="box" href="/components/primitives">
+    The coss/Base UI components the blocks are assembled from, re-exported for composition.
+  </Card>
+</Columns>

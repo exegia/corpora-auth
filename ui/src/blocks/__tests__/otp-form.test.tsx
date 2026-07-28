@@ -22,6 +22,7 @@ async function goToVerifyStep(): Promise<void> {
 async function enterCode(code: string): Promise<void> {
   const user = userEvent.setup();
   const [firstSlot] = screen.getAllByRole("textbox");
+  if (!firstSlot) throw new Error("expected at least one code input");
   await user.click(firstSlot);
   await user.keyboard(code);
 }

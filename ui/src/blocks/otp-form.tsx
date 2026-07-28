@@ -98,7 +98,11 @@ export function OtpForm({
 
   if (step === "verify") {
     return (
-      <div className={cn("flex w-full flex-col gap-4", className)}>
+      <div
+        data-motion="slide"
+        data-slot="auth-block"
+        className={cn("flex w-full flex-col gap-4", className)}
+      >
         <p role="status">
           We sent a 6-digit code to {email}. Enter it below to sign in.
         </p>
@@ -141,7 +145,7 @@ export function OtpForm({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
       {status.kind === "error" ? (
         <AuthErrorAlert error={status.error} overrides={errorMessages} />
       ) : null}

@@ -1,0 +1,14 @@
+# Workspace-wide install strategy.
+#
+# `isolated` (pnpm-like) is what keeps React a singleton across the workspace.
+# Under the hoisted linker each workspace package can end up with its own
+# physical copy of a shared dependency; when @exegia/auth-ui and the app that
+# renders it resolve different copies of React, hooks read a null
+# ReactSharedInternals and every render throws
+# "Cannot read properties of null (reading 'useMemo')".
+#
+# Isolated linking puts one entry per resolved version in node_modules/.bun and
+# points every consumer's node_modules at it by symlink, so the shared versions
+# declared in the root `catalog` resolve to a single instance.
+[install]
+linker = "isolated"

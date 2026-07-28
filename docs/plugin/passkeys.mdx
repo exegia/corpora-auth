@@ -1,0 +1,134 @@
+---
+title: "Passkeys"
+description: "WebAuthn sign-in and management, the pluggable ceremony seam, and what each platform requires."
+---
+
+<Warning>
+Supabase Auth's passkey API is an experimental beta. This plugin pins against current GoTrue behaviour and may need updates if that API changes.
+</Warning>
+
+The plugin owns every server round-trip. Only the OS credential prompt is delegated, because WKWebView gates `navigator.credentials` behind an Apple-approved-browser entitlement — the webview cannot run WebAuthn on macOS at all.
+
+## Two ways passkeys become unavailable
+
+They surface differently on purpose:
+
+<Columns cols={2}>
+  <Card title="Device capability" icon="laptop">
+    `getPasskeyCapability()` answers "can this device run a prompt?". Free, offline, no network. Check it before rendering any passkey UI.
+  </Card>
+  <Card title="Project configuration" icon="server">
+    Passkeys disabled on the server surfaces as a `configuration` error at call time, with the offending setting named in the message.
+  </Card>
+</Columns>
+
+## Ceremony providers
+
+The OS prompt runs behind a `CeremonyProvider` trait. Precedence:
+
+1. An app-supplied provider via `PluginBuilder::ceremony_provider`
+2. The built-in provider for the compile target
+3. Neither — passkeys report unusable
+
+| Platform | Built-in | Notes |
+| --- | --- | --- |
+| macOS | `ASAuthorizationPlatformPublicKeyCredentialProvider`, macOS 13+ | The OS builds `clientDataJSON` and derives the origin from Associated Domains, so `passkeys.origin` is ignored here |
+| Windows | `webauthn.dll`, Windows 10 19H1+ | The app asserts the configured `passkeys.origin`; without it the provider reports unavailable. The DLL is loaded dynamically, so older systems report `Unavailable` rather than failing to launch |
+| Linux | None | No platform authenticator. `getPasskeyCapability()` reports it honestly and the UI kit blocks hide themselves |
+
+Both built-ins are compiled behind `cfg(target_os = …)`, so a Linux build carries neither.
+
+### Supplying your own
+
+<CodeGroup>
+
+```rust Rust
+use tauri_plugin_supabase_auth::{Availability, CeremonyOutcome, CeremonyProvider, PluginBuilder};
+
+struct MyCeremony;
+
+impl CeremonyProvider for MyCeremony {
+    fn availability(&self) -> Availability {
+        Availability::Available
+    }
+    fn create(&self, options_json: &str) -> CeremonyOutcome {
+        // OS registration prompt -> CeremonyOutcome::Completed(credential_json)
+        todo!()
+    }
+    fn get(&self, options_json: &str) -> CeremonyOutcome {
+        // OS assertion prompt
+        todo!()
+    }
+}
+
+tauri::Builder::default()
+    .plugin(PluginBuilder::new().ceremony_provider(MyCeremony).build())
+```
+
+```ts JavaScript
+// Where the webview does support WebAuthn — WebView2 on Windows, for example
+import {
+  passkeyRegistrationOptions,
+  passkeyRegistrationVerify,
+} from "@exegia/plugin-supabase-auth";
+
+const { challengeId, options } = await passkeyRegistrationOptions();
+const credential = await navigator.credentials.create({ publicKey: options });
+await passkeyRegistrationVerify({
+  challengeId,
+  credential: credential.toJSON(),
+});
+```
+
+</CodeGroup>
+
+`options` is passed through verbatim as the server's WebAuthn options JSON, and `CeremonyOutcome::Cancelled` is a first-class non-error outcome. Providers are invoked on a blocking thread and no timeout of the plugin's spans the prompt — the server's challenge TTL is the effective ceiling.
+
+The JavaScript route needs the four two-step [permissions](/plugin/permissions) granted.
+
+## Project prerequisites
+
+One-time work for the project owner:
+
+<Steps>
+<Step title="Enable passkeys">
+Dashboard under **Authentication → Passkeys**, or `[auth.passkey] enabled = true` in `supabase/config.toml` for a local stack, or `GOTRUE_PASSKEY_ENABLED=true` self-hosted.
+</Step>
+
+<Step title="Set the relying-party config">
+`GOTRUE_WEBAUTHN_RP_ID` (a bare domain you control), `GOTRUE_WEBAUTHN_RP_DISPLAY_NAME`, and `GOTRUE_WEBAUTHN_RP_ORIGINS` — which must include the origin your ceremony asserts.
+
+<Warning>
+Changing `rp_id` later invalidates every enrolled passkey.
+</Warning>
+</Step>
+
+<Step title="Optional limits">
+`GOTRUE_PASSKEY_MAX_PASSKEYS_PER_USER` (default 10) and `GOTRUE_WEBAUTHN_CHALLENGE_EXPIRY_DURATION` (default 5 minutes).
+</Step>
+
+<Step title="macOS only: associated domains">
+A signed build, an App ID with the Associated Domains capability, and an `apple-app-site-association` file with `webcredentials` served over HTTPS from `https://<rp-id>/.well-known/apple-app-site-association`.
+</Step>
+</Steps>
+
+## Using it
+
+```tsx
+import { PasskeySignIn, PasskeyManager } from "@exegia/auth-ui";
+
+// Sign-in screen — renders nothing when the device can't prompt
+<PasskeySignIn onSignedIn={() => navigate("/app")} />;
+
+// Settings screen
+<PasskeyManager onRegistered={(passkey) => toast(`Added ${passkey.friendlyName}`)} />;
+```
+
+Or through the [bindings](/plugin/javascript-api) directly.
+
+## Traps worth knowing
+
+- **Registration always requires an authenticated user.** A passkey binds to an existing account, so there is no passkey-first sign-up. Sign in another way, then register.
+- **Deleting the last passkey is not blocked server-side.** `<PasskeyManager />` warns before it happens; do the same in a custom UI, and keep another sign-in method on every account.
+- **On macOS, an unentitled build reports passkeys as usable.** Availability keys on the macOS version floor alone, so the entitlement failure only surfaces at prompt time. A build that looks fine can fail at the prompt.
+- **`rp_id` cannot stay `localhost` for macOS native ceremonies.** An associated domain must be a real domain you control, so `rp_id` and `rp_origins` both have to move — and moving `rp_id` invalidates enrolled passkeys.

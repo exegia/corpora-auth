@@ -1,0 +1,83 @@
+---
+title: "Configuration"
+description: "Every plugin option in tauri.conf.json, its default, and what it changes."
+---
+
+Configuration lives under `plugins.supabase-auth` in `tauri.conf.json`. Two fields are required; the rest have defaults.
+
+```json src-tauri/tauri.conf.json
+{
+  "plugins": {
+    "supabase-auth": {
+      "url": "https://your-project.supabase.co",
+      "publishableKey": "your-publishable-or-anon-key",
+      "sessionPersistence": "keychain",
+      "autoRefresh": true,
+      "refreshBufferSecs": 60,
+      "oauth": {
+        "callbackPorts": [43823, 43824, 43825],
+        "flowTimeoutSecs": 300
+      },
+      "passkeys": {
+        "origin": "https://auth.example.com"
+      }
+    }
+  }
+}
+```
+
+<Info>
+Configuration is validated at startup. A typo aborts launch with a message naming the offending field, rather than failing at the first sign-in.
+</Info>
+
+## Options
+
+<ParamField path="url" type="string" required>
+  Your Supabase project URL. For a local stack this is `http://127.0.0.1:54321`.
+</ParamField>
+
+<ParamField path="publishableKey" type="string" required>
+  The publishable (anon) key. Never the service-role key — it is readable from the app bundle and bypasses row-level security.
+</ParamField>
+
+<ParamField path="sessionPersistence" type='"keychain" | "file" | "none"' default="keychain">
+  Where the session is stored between launches. `keychain` uses the OS credential store. `file` writes to the app data directory with `0600` permissions. `none` keeps the session in memory only, so quitting signs the user out.
+</ParamField>
+
+<ParamField path="autoRefresh" type="boolean" default="true">
+  Refresh sessions in the background before they expire. The plugin owns this task itself — one task sleeping until `expires_at - refreshBufferSecs`, re-evaluated on every state transition.
+</ParamField>
+
+<ParamField path="refreshBufferSecs" type="number" default="60">
+  How many seconds before expiry the background refresh fires.
+</ParamField>
+
+<ParamField path="oauth.callbackPorts" type="number[]" default="[43823, 43824, 43825]">
+  Loopback ports tried in order for the OAuth redirect. The plugin binds the first free one and asks GoTrue to redirect to `http://127.0.0.1:<port>/callback`.
+</ParamField>
+
+<ParamField path="oauth.flowTimeoutSecs" type="number" default="300">
+  How long an abandoned browser round-trip waits before failing with `oauthFlowInterrupted`.
+</ParamField>
+
+<ParamField path="passkeys.origin" type="string">
+  The HTTPS origin a built-in native WebAuthn ceremony asserts. Required on Windows, ignored on macOS (the OS derives the origin from Associated Domains). Must appear in the project's `GOTRUE_WEBAUTHN_RP_ORIGINS`.
+</ParamField>
+
+## Changing the callback ports
+
+Supabase matches `additional_redirect_urls` exactly. If you change `oauth.callbackPorts`, add the matching `http://127.0.0.1:<port>/callback` URLs to the project.
+
+<Warning>
+A missing redirect URL fails after the consent screen, inside GoTrue — it does not surface as a structured plugin error. See [OAuth](/plugin/oauth).
+</Warning>
+
+## Session persistence trade-offs
+
+| Mode | Survives restart | Where |
+| --- | --- | --- |
+| `keychain` | Yes | macOS Keychain, Windows Credential Manager, Secret Service on Linux |
+| `file` | Yes | App data directory, mode `0600` |
+| `none` | No | Memory only |
+
+A corrupt or revoked stored session degrades to signed-out at startup. It never crashes the app and never leaves a half-restored session behind.

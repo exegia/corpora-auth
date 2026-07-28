@@ -469,7 +469,7 @@ describe("useOnboardingFlow — declared multi-step configs (US4)", () => {
       },
     });
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(onComplete.mock.calls[0][0].profile).toEqual({
+    expect(onComplete.mock.calls[0]?.[0].profile).toEqual({
       display_name: "Ada",
       newsletter: true,
     });

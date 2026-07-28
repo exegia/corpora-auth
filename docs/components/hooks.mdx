@@ -1,0 +1,158 @@
+---
+title: "Hooks"
+description: "The hooks the blocks are built on, for when you want your own UI over the same behaviour."
+---
+
+Every hook talks to the plugin bindings directly. There is no provider to mount and no shared store to configure.
+
+Actions never throw. They resolve to a discriminated result, so a failed call is a branch rather than a `try`/`catch`.
+
+## useSession
+
+Session state, kept current by push events.
+
+```tsx
+import { useSession } from "@exegia/auth-ui";
+
+const { session, user, status } = useSession();
+
+if (status === "loading") return <Splash />;
+if (status === "signedOut") return <SignInForm />;
+return <App user={user} />;
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `status` | `"loading" \| "signedIn" \| "signedOut"` | `loading` covers the startup restore |
+| `session` | `Session \| null` | Sanitized — no refresh token |
+| `user` | `User \| null` | Convenience for `session?.user` |
+
+## useAuth
+
+Stable async actions wrapping the bindings.
+
+```tsx
+import { useAuth } from "@exegia/auth-ui";
+
+const auth = useAuth();
+
+const result = await auth.signIn({ email, password });
+if (!result.ok) return setError(result.error.message);
+navigate("/app");
+```
+
+```ts
+type AuthResult<T = void> =
+  | { ok: true; data: T }
+  | { ok: false; error: AuthError };
+```
+
+Non-`AuthError` failures are folded into `kind: "unknown"`, so `result.error` is always the structured shape.
+
+| Action | Result |
+| --- | --- |
+| `signIn({ email, password })` | `AuthResult<Session>` |
+| `signUp(opts)` | `AuthResult<SignUpResult>` |
+| `signOut()` | `AuthResult<void>` |
+| `signInWithOtp({ email?, phone?, redirectTo? })` | `AuthResult<void>` |
+| `verifyOtp({ email?, phone?, token, type })` | `AuthResult<Session>` |
+| `signInWithOAuth({ provider, scopes? })` | `AuthResult<Session>` |
+| `cancelOAuthFlow()` | `AuthResult<void>` |
+| `resetPassword({ email, redirectTo? })` | `AuthResult<void>` |
+| `updateUser(opts)` | `AuthResult<User>` |
+
+The returned object is memoized, so it is safe in a dependency array.
+
+## useIdentities
+
+The identity list for the signed-in account. Loads on mount, refreshes on `IDENTITIES_CHANGED`.
+
+```tsx
+const { identities, status, link, unlink, linkInFlight, cancelLink } = useIdentities();
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `identities` | `Identity[] \| null` | `null` until the first successful load, and while signed out |
+| `status` | `"loading" \| "ready" \| "error"` | A load failure is never rendered as an empty ready list |
+| `error` | `AuthError \| null` | The load error |
+| `linkInFlight` | `Provider \| null` | The provider whose round-trip is currently in the browser |
+| `refresh()` | `Promise<void>` | Re-fetches |
+| `link(provider)` | `Promise<IdentityActionResult>` | Starts the browser round-trip |
+| `cancelLink()` | `Promise<void>` | Cancels an in-flight link |
+| `unlink(identityId)` | `Promise<IdentityActionResult>` | Disconnects; refused for the last sign-in method |
+
+```ts
+type IdentityActionResult =
+  | { ok: true; identities: Identity[] }
+  | { ok: false; error: AuthError };
+```
+
+Needs the identity [permissions](/plugin/permissions).
+
+## usePasskeys
+
+Device capability plus the credential list. Probes capability on mount without touching the network, loads the list when signed in, refreshes on `PASSKEYS_CHANGED`.
+
+```tsx
+const { capability, passkeys, register, signIn, rename, remove } = usePasskeys();
+
+if (!capability?.usable) return null;
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `capability` | `PasskeyCapability \| null` | `null` until the device probe completes. Never network-dependent |
+| `passkeys` | `Passkey[] \| null` | `null` until the first successful load, and while signed out |
+| `status` | `"loading" \| "ready" \| "error"` | |
+| `error` | `AuthError \| null` | |
+| `refresh()` | `Promise<void>` | Re-fetches the list |
+| `signIn()` | `PasskeyActionResult<PasskeySignInResult>` | `data.status === "cancelled"` is not an error |
+| `register()` | `PasskeyActionResult<PasskeyRegistrationResult>` | OS prompt on the current account |
+| `rename(id, friendlyName)` | `PasskeyActionResult<Passkey>` | 1–120 characters |
+| `remove(id)` | `PasskeyActionResult<void>` | Confirm first — there is no server-side protection against removing the last one |
+
+## useOnboarding
+
+Where a signed-in user stands in a declared onboarding configuration.
+
+```tsx
+const { status, nextStep } = useOnboarding(steps);
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `status` | `"loading" \| "signedOut" \| "incomplete" \| "complete"` | Derived from the status record in `user_metadata`, event-driven via `useSession` |
+| `nextStep` | `string \| undefined` | The first incomplete step's `id`, present when `status` is `"incomplete"` |
+
+`incomplete` means present `<OnboardingFlow />`; `complete` means never show it again.
+
+Use it to decide whether to route an existing user back into `<OnboardingFlow />` after sign-in.
+
+## useOnboardingFlow
+
+The full state machine behind `<OnboardingFlow />`, for a custom funnel.
+
+```tsx
+const flow = useOnboardingFlow({ steps, onComplete });
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `state` | `"loading" \| "credentials" \| "confirming" \| "profile" \| "completing" \| "done"` | Which screen the funnel is on |
+| `stepIndex` | `number` | Index into `steps` |
+| `steps` | `OnboardingStepConfig[]` | Resolved configuration |
+| `progress` | `OnboardingProgressItem[]` | `{ id, title, status: "done" \| "current" \| "todo" }` per step |
+| `values` | `Record<string, unknown>` | Collected field values |
+| `email` | `string \| null` | The address awaiting confirmation |
+| `resent` | `boolean` | Whether a confirmation resend has been sent |
+| `submitting` | `boolean` | A write is in flight |
+| `error` | `AuthError \| null` | |
+
+Actions: `submitCredentials({ email, password })`, `submitCode(code)`, `resendCode()`, `editEmail()`, `submitStep(values)`, `goBack()`, and `signInInstead({ email, password }?)`.
+
+`onComplete` fires exactly once, only after the final status write succeeds. It receives `{ user, profile }`, where `profile` holds the values collected during this mount and is empty on an already-complete resume.
+
+While waiting on email confirmation the hook re-checks on an interval, so the funnel advances on its own once the user confirms in another window.
+
+Both onboarding hooks need `allow-update-user`.

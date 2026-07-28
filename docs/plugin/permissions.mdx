@@ -1,0 +1,120 @@
+---
+title: "Permissions"
+description: "The default command set, and the account mutations a capability has to opt into explicitly."
+---
+
+Tauri gates every command behind a capability. The plugin ships a safe default set covering the session lifecycle; anything that mutates the account is excluded and must be granted by name.
+
+```json src-tauri/capabilities/default.json
+{
+  "permissions": ["core:default", "supabase-auth:default"]
+}
+```
+
+<Warning>
+A command that is not granted rejects with `kind: "permissionDenied"`. That is a wiring error, not a runtime condition — grant the permission rather than handling it in the UI.
+</Warning>
+
+## The default set
+
+`supabase-auth:default` grants these commands:
+
+| Permission | Command |
+| --- | --- |
+| `allow-sign-up` | `signUp` |
+| `allow-sign-in-with-password` | `signInWithPassword` |
+| `allow-sign-in-with-otp` | `signInWithOtp` |
+| `allow-verify-otp` | `verifyOtp` |
+| `allow-start-oauth-flow` | `signInWithOAuth` |
+| `allow-cancel-oauth-flow` | `cancelOAuthFlow` |
+| `allow-sign-out` | `signOut` |
+| `allow-get-session` | `getSession` |
+| `allow-get-user` | `getUser` |
+| `allow-refresh-session` | `refreshSession` |
+
+## Opt-in permissions
+
+Add these individually alongside `supabase-auth:default`.
+
+<Tabs>
+<Tab title="Account">
+
+```json
+{
+  "permissions": [
+    "core:default",
+    "supabase-auth:default",
+    "supabase-auth:allow-reset-password-for-email",
+    "supabase-auth:allow-update-user"
+  ]
+}
+```
+
+| Permission | Needed by |
+| --- | --- |
+| `allow-reset-password-for-email` | `resetPasswordForEmail`, `<ForgotPasswordForm />` |
+| `allow-update-user` | `updateUser`, `<UpdatePasswordForm />`, `<OnboardingFlow />` |
+
+`<OnboardingFlow />` needs `allow-update-user` because it persists step progress in `user_metadata` so an abandoned flow resumes on the next launch.
+
+</Tab>
+<Tab title="Account linking">
+
+```json
+{
+  "permissions": [
+    "supabase-auth:allow-get-identities",
+    "supabase-auth:allow-link-identity",
+    "supabase-auth:allow-unlink-identity"
+  ]
+}
+```
+
+| Permission | Needed by |
+| --- | --- |
+| `allow-get-identities` | `getIdentities` — list the identities on the account |
+| `allow-link-identity` | `linkIdentity` — attach a provider identity via the system browser |
+| `allow-unlink-identity` | `unlinkIdentity` — disconnect an identity |
+
+Linking also requires `enable_manual_linking = true` on the Supabase project. See [Provider setup](/plugin/provider-setup).
+
+</Tab>
+<Tab title="Passkeys">
+
+```json
+{
+  "permissions": [
+    "supabase-auth:allow-get-passkey-capability",
+    "supabase-auth:allow-sign-in-with-passkey",
+    "supabase-auth:allow-register-passkey",
+    "supabase-auth:allow-list-passkeys",
+    "supabase-auth:allow-rename-passkey",
+    "supabase-auth:allow-delete-passkey"
+  ]
+}
+```
+
+The sign-in surface and the management surface are separate grants, so an app can offer passkey sign-in without exposing management.
+
+| Surface | Permissions |
+| --- | --- |
+| Capability probe | `allow-get-passkey-capability` |
+| Sign-in | `allow-sign-in-with-passkey` |
+| Management | `allow-register-passkey`, `allow-list-passkeys`, `allow-rename-passkey`, `allow-delete-passkey` |
+| App-run ceremonies | `allow-passkey-registration-options`, `allow-passkey-registration-verify`, `allow-passkey-authentication-options`, `allow-passkey-authentication-verify` |
+
+Grant the last row only if your app runs its own WebAuthn ceremony in the webview. See [Passkeys](/plugin/passkeys).
+
+</Tab>
+</Tabs>
+
+## Multi-window apps
+
+Capabilities are scoped to window labels. If your app opens authentication in its own windows, the capability's `windows` glob has to cover their labels — a window outside the glob gets zero capabilities and every auth command in it fails with a non-`AuthError` rejection.
+
+```json src-tauri/capabilities/default.json
+{
+  "windows": ["main", "auth-*"],
+  "permissions": ["core:default", "supabase-auth:default"]
+}
+```
