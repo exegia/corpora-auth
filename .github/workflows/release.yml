@@ -53,6 +53,18 @@ jobs:
           cargo update --workspace --quiet || true   # refresh Cargo.lock version entry
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # bun.lock pins each workspace member's own version (e.g. guest-js ->
+      # "0.2.2"), and `bun publish` resolves `workspace:*` deps against that
+      # pinned version, not the live package.json. Without this, publishing
+      # ui after the bump above ships a stale `@exegia/plugin-supabase-auth`
+      # dependency version (confirmed: v0.5.0 shipped pinned to 0.2.2).
+      # Verified locally: a plain `bun install` over an existing bun.lock
+      # does NOT refresh a workspace member's pinned version (the
+      # `workspace:*` specifier string is unchanged, so bun skips
+      # re-resolving it) — the lockfile must be deleted and regenerated.
+      - name: Refresh bun.lock to pick up the bumped versions
+        run: rm -f bun.lock && bun install
+
       - name: Commit and push release branch
         run: |
           git config user.name "github-actions[bot]"
