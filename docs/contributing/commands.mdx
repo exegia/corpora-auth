@@ -1,0 +1,178 @@
+---
+title: "Repository commands"
+description: "Every make target in the repository task runner: setup, running the examples, building the three artifacts, the test suites, quality gates, the local Supabase stack, and cleaning."
+---
+
+This page is for working *in* this repository. If you are consuming the published packages instead, [Quickstart](/quickstart) is the page you want.
+
+The root `Makefile` is the task runner. Running `make` with no target prints the same index this page documents:
+
+```bash
+make          # list every target
+make setup    # install everything
+make build test
+```
+
+Every script in every workspace `package.json` has a root target, so the whole monorepo is drivable from the repo root. The Makefile is a thin wrapper — nothing is reachable *only* through `make`.
+
+<Note>
+Targets are named in an `area:thing` form, but each is an alias over a plain-named rule: `build:ui` and `build-ui` are the same target. Both spellings work on the command line. The distinction matters only when editing the `Makefile`, because GNU make accepts an escaped colon in a target name but silently ignores one in a *prerequisite* list — so dependencies between rules are always expressed with the plain names.
+</Note>
+
+## Setup
+
+| Target | What it does |
+| --- | --- |
+| `make setup` | `bun install` across the workspace, then preflight the toolchain |
+| `make install` | `bun install` across the workspace |
+| `make doctor` | Diagnose the toolchain, Supabase stack and ports |
+
+`setup` is `install` plus the example app's `doctor` check, which is the one to run on a fresh clone.
+
+## Running the examples
+
+| Target | What it does |
+| --- | --- |
+| `make dev:web` | Run the web example (Bun dev server, hot reload, port 3000) |
+| `make dev:tauri` | Run the Tauri example (Vite + Tauri) |
+| `make dev:mcp` | Run the Tauri example with `window.__TAURI__` exposed, for `tauri-mcp` |
+| `make start:web` | Serve the web example in production mode |
+| `make preview:tauri` | Serve the built Tauri frontend without Tauri |
+| `make tauri` | Run the Tauri CLI in the example app |
+
+`make tauri` forwards arguments through the `ARGS` variable:
+
+```bash
+make tauri ARGS="info"
+```
+
+<Warning>
+These targets are not standalone — they build their prerequisites first, and that ordering is load-bearing.
+
+Both example apps render `@exegia/auth-ui`, which imports the bindings package; that resolves to `guest-js/dist` through the workspace link, so **the bindings must exist before either dev server can start**. The web example goes one step further: its `tsconfig` maps `@exegia/auth-ui` to `ui/dist`, and bun honours `tsconfig` paths, so its bundle comes from the built UI kit rather than from source. A stale `ui/dist` is a stale app.
+
+That is why `dev:web` and `start:web` depend on `build:ui` while `dev:tauri` and `dev:mcp` only need `build:bindings`.
+</Warning>
+
+## Building
+
+| Target | What it does |
+| --- | --- |
+| `make build` | Build every publishable artifact |
+| `make build:bindings` | Build `@exegia/plugin-supabase-auth` (tsup, esm + cjs + dts) |
+| `make build:ui` | Build `@exegia/auth-ui` into `ui/dist` (needs the bindings' dist) |
+| `make build:plugin` | Verify the Rust crate packages cleanly for crates.io (`cargo publish --dry-run`) |
+| `make build:example` | Build the Tauri example's frontend bundle |
+| `make build:tauri` | Alias for `build:example` |
+| `make build:web` | Build the web example's frontend bundle |
+| `make build:docker` | Build the Linux CI toolchain image |
+| `make docker:shell` | Build the image and open a shell in it with the repo mounted |
+| `make pack` | Produce inspectable npm tarballs in `dist-packages/` |
+
+`make build` chains the three publishable artifacts in dependency order: bindings, then the UI kit, then the crate package check.
+
+<Note>
+`build:plugin` and `pack` only *verify* that a release would work. Neither publishes anything — releases are a `workflow_dispatch` on `release.yml`.
+
+`pack` exists because `bun pm pack` does not apply `publishConfig` field overrides, so packing `@exegia/auth-ui` naively yields a tarball still pointing at `./src/index.ts`. `scripts/pack.sh` mirrors the rewrite that the release workflow performs.
+</Note>
+
+The Docker targets reproduce the Linux CI toolchain (Rust, webkit2gtk, bun, node, the Supabase CLI) so the Linux build is reachable from macOS. The image is for local use; CI itself runs on `runs-on`, not inside it.
+
+## Testing
+
+| Target | What it does |
+| --- | --- |
+| `make test` | Run every offline suite (Rust + UI) |
+| `make test:rust` | `cargo test` for the plugin crate |
+| `make test:plugin` | Alias for `test:rust` |
+| `make test:bindings` | Run `@exegia/plugin-supabase-auth`'s test script |
+| `make test:workspaces` | Run the `test` script in every workspace package |
+| `make test:ui` | vitest for `@exegia/auth-ui` (builds the bindings first) |
+| `make test:e2e` | Full auth lifecycle against the local Supabase stack |
+| `make test:example` | Run the Tauri example's own test script |
+
+Narrower runs go through the underlying tools directly:
+
+```bash
+cargo test --test auth_lifecycle sign_up_with_autoconfirm_signs_in   # one Rust test
+cd ui && bun x vitest run src/blocks/__tests__/otp-form.test.tsx     # one UI file
+cd ui && bun x vitest run -t "resumes"                               # by test name
+```
+
+<Warning>
+The UI suite resolves `@exegia/plugin-supabase-auth` through the built bindings, so a fresh checkout fails until they exist. `make test:ui` handles that ordering; a raw `vitest` invocation does not.
+</Warning>
+
+The E2E lifecycle test is `#[ignore]`d and needs credentials. `make test:e2e` reads them from `supabase status`, so start the stack with `make supabase-up` first.
+
+## Quality gates
+
+| Target | What it does |
+| --- | --- |
+| `make check` | Lint and type-check everything |
+| `make lint` | `cargo fmt --check` + clippy for the plugin and the example |
+| `make fmt` | Format the Rust sources |
+| `make typecheck` | `tsc --noEmit` across the TypeScript packages |
+| `make typecheck:ui` | `tsc --noEmit` for `@exegia/auth-ui` |
+| `make typecheck:tauri` | `tsc --noEmit` for the Tauri example |
+| `make typecheck:web` | `tsc --noEmit` for the web example |
+
+`lint` and `fmt` cover two Cargo workspaces: the plugin at the repo root, and the example's `src-tauri/`, which has its own lockfile and is not reached by root `cargo` commands.
+
+## Local Supabase stack
+
+| Target | What it does |
+| --- | --- |
+| `make supabase-up` | Start the local Supabase stack |
+| `make supabase-down` | Stop the local Supabase stack |
+| `make supabase-status` | Show local Supabase service URLs and keys |
+
+The Supabase config lives at the repo root, not in the example app.
+
+## Cleaning
+
+| Target | What it does |
+| --- | --- |
+| `make clean` | Remove `node_modules`, build output, Cargo targets and generated files |
+| `make clean:build` | Remove build output only, keeping `node_modules` |
+| `make clean:dry` | Report what `clean` would remove, without removing it |
+
+<Warning>
+`make clean` at the repo root removes both Cargo target directories and every `node_modules` — on the order of 10 GB. It prompts before doing so, and `make clean:dry` shows the list first.
+
+The example app's own `clean` is a different, narrower target that keeps dependencies. `make clean:build` is the root equivalent.
+</Warning>
+
+Tooling changes are worth verifying against a clean tree:
+
+```bash
+make clean && make setup && make build && make test
+```
+
+Ordering defects — a missing build prerequisite — pass on a warm tree and only fail on a fresh checkout.
+
+## The example app's own targets
+
+`examples/tauri-app/` has a second Makefile. The root targets above delegate to it rather than duplicating it, and it carries the app-specific work that has no root equivalent:
+
+```bash
+make -C examples/tauri-app help
+```
+
+| Area | Targets |
+| --- | --- |
+| Setup | `setup`, `install`, `doctor` |
+| Run | `dev`, `dev-mcp`, `preview` |
+| Build | `build`, `build-app` |
+| Quality | `typecheck`, `fmt`, `lint`, `check` |
+| Test | `test`, `test-e2e` |
+| Supabase | `supabase-up`, `supabase-down`, `supabase-restart`, `supabase-status`, `supabase-reset`, `supabase-flags`, `mail` |
+| tauri-mcp | `mcp-install`, `mcp-doctor`, `mcp-start`, `mcp-status`, `mcp-stop`, `mcp-restart`, `mcp-shot`, `mcp-logs` |
+| Clean | `clean`, `clean-plugin`, `distclean` |
+
+The `mcp-*` targets drive the running app through the `tauri-mcp` CLI — screenshotting the webview, querying the DOM, evaluating JS — which is how UI changes get verified against the real app. `supabase-restart` is needed after editing `supabase/config.toml`, and `supabase-reset` destroys all local auth users.
+
+<Note>
+The example app is multi-window, so every `tauri-mcp` CLI call needs `--window-id`. `main` is the method picker; each method opens its own `auth-<id>` window. Without the flag you drive whichever window is default and silently assert against the wrong DOM.
+</Note>

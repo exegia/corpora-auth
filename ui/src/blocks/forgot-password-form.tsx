@@ -100,7 +100,11 @@ export function ForgotPasswordForm({
 
   if (step === "verify") {
     return (
-      <div className={cn("flex w-full flex-col gap-4", className)}>
+      <div
+        data-motion="slide"
+        data-slot="auth-block"
+        className={cn("flex w-full flex-col gap-4", className)}
+      >
         <p role="status">
           If an account exists for {email}, a recovery message with a 6-digit
           code has been sent. Enter the code below.
@@ -144,7 +148,7 @@ export function ForgotPasswordForm({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
       {status.kind === "error" ? (
         <AuthErrorAlert error={status.error} overrides={errorMessages} />
       ) : null}

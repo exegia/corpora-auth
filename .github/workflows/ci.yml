@@ -68,10 +68,15 @@ jobs:
       - uses: actions/checkout@v4
       # Reads the bun version from the root package.json "packageManager" field.
       - uses: oven-sh/setup-bun@v2
-      # Some tooling (vitest, tsc shims) still spawns `node` directly.
+      # Some tooling (vitest, tsc shims) still spawns `node` directly, and the
+      # vitest forks pool runs each test file in a `node` child — so this pin,
+      # not bun, is what jsdom has to satisfy. jsdom 30 requires
+      # ^22.22.2 || ^24.15.0 || >=26.0.0 (its undici 8 dependency reads
+      # `markAsUncloneable` from node:worker_threads, absent before Node 22.10).
+      # Matches release.yml. Don't lower it without checking jsdom's engines.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run --filter @exegia/auth-ui test

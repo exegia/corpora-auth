@@ -53,24 +53,60 @@ own project by editing `url`/`publishableKey`.
 To see startup config validation (FR-012), blank out `url` and relaunch —
 the app aborts with a message naming the field.
 
+## How it is put together
+
+The app is **multi-window**. The `main` window is a picker listing every
+available method; choosing one opens a child window labelled `auth-<id>` and
+minimizes the picker behind it. That child runs the method, then shows either
+the session it produced or a report on why it failed, and closing it restores
+the picker.
+
+Every window loads the same bundle — `src/main.tsx` routes on
+`getCurrentWindow().label`, so there is no second HTML entry point. Adding a
+method means an entry in `src/lib/methods.ts` **and** a label that falls under
+the `auth-*` glob in `src-tauri/capabilities/default.json`; a label outside
+that glob gets no capabilities and every auth command in it fails.
+
+No cross-window messaging is involved. The plugin emits auth events through
+`AppHandle::emit`, which reaches every window, so the minimized picker updates
+the moment the child signs in.
+
+The shell — picker cards, result panel, error report, toasts — is built with
+[Base UI](https://base-ui.com); the forms themselves are the `@exegia/auth-ui`
+blocks, which is what this example exists to demonstrate.
+
 ## What to try
 
-1. **Email/password** — register, sign out, sign in; "ask Rust" shows the
-   identity as seen from backend code.
-2. **Persistence** — sign in, quit fully, relaunch: still signed in.
-3. **Recovery** — request a reset, grab the code from the local mailbox,
+1. **Email/password** — pick "Email & password", sign in, and read the session
+   panel: user id, timestamps, token expiry, and the metadata objects. Note the
+   refresh token is absent — the webview is never given one.
+2. **A failure** — sign in with a wrong password. The window switches to a
+   detailed report (error kind, the plugin's raw message, a likely cause) with
+   a button that copies the whole thing for pasting into an AI session. It does
+   not auto-close; dismiss it and the picker comes back.
+3. **Sign-out on quit** — sign in, quit the app, relaunch: you are signed out.
+   `RunEvent::ExitRequested` in `src-tauri/src/lib.rs` clears the session on the
+   way out, so every launch starts clean. This is the example's own behaviour,
+   not the plugin's — `sessionPersistence` is still `"keychain"`, and removing
+   that handler restores normal restore-on-launch.
+4. **Recovery** — request a reset, grab the code from the local mailbox,
    redeem it in-app, set a new password. Needs the opt-in permissions
    already granted in `src-tauri/capabilities/default.json`.
-4. **Passwordless / OAuth** — OTP tab; social buttons (configure a provider
-   with redirect `http://127.0.0.1:43823/callback` first).
-5. **Onboarding** — the "Create account" tab runs `<OnboardingFlow />`:
-   credentials → profile step(s) → home screen. Check "Use custom
-   onboarding steps" to try a two-step config (required role select +
-   optional newsletter checkbox). Quit at a profile step and relaunch to
-   watch the flow resume exactly where you left off (progress lives in
-   `user_metadata.corpora_onboarding`).
-6. **Account linking** — sign in with email/password, then use the
-   "Linked accounts" section on the home screen (`<LinkedAccounts />`):
+5. **Passwordless / OAuth** — the one-time-code method, or the Google/GitHub
+   methods (configure a provider with redirect
+   `http://127.0.0.1:43823/callback` first). Closing an OAuth window mid-flow
+   cancels the pending round-trip rather than leaving it to time out.
+6. **Passkeys** — the passkey card only appears when the device reports a
+   usable capability, so it is hidden rather than opening a window that cannot
+   work.
+7. **Onboarding** — the "Create an account" method runs `<OnboardingFlow />`:
+   credentials → profile step(s) → the session panel. Progress lives in
+   `user_metadata.corpora_onboarding`, so an interrupted flow resumes at the
+   step you left off.
+8. **Account linking** — while signed in the picker gains a "Manage this
+   account" card, whose window carries `<LinkedAccounts />`,
+   `<PasskeyManager />`, `<UpdatePasswordForm />` and the "ask Rust"
+   backend-parity check. From there:
    connect GitHub or Google (system-browser round-trip; configure the
    provider with redirect `http://127.0.0.1:43823/callback` first), watch
    the identity appear in the list, then disconnect it again. With a single

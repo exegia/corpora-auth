@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Session } from "@exegia/plugin-supabase-auth";
+import type { AuthError, Session } from "@exegia/plugin-supabase-auth";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,15 @@ import { AuthErrorAlert, CodeField, type BlockStatus } from "./internal";
 
 export interface OtpFormProps {
   onSuccess?: (session: Session) => void;
+  /** See `SignInFormProps.onError`. Fires alongside the inline alert. */
+  onError?: (error: AuthError) => void;
   errorMessages?: ErrorMessageOverrides;
   className?: string;
 }
 
 export function OtpForm({
   onSuccess,
+  onError,
   errorMessages,
   className,
 }: OtpFormProps): React.ReactElement {
@@ -38,6 +41,7 @@ export function OtpForm({
       return true;
     }
     setStatus({ kind: "error", error: result.error });
+    onError?.(result.error);
     return false;
   }
 
@@ -83,6 +87,7 @@ export function OtpForm({
       return;
     }
     setStatus({ kind: "error", error: result.error });
+    onError?.(result.error);
   }
 
   async function handleResend(): Promise<void> {
@@ -93,7 +98,11 @@ export function OtpForm({
 
   if (step === "verify") {
     return (
-      <div className={cn("flex w-full flex-col gap-4", className)}>
+      <div
+        data-motion="slide"
+        data-slot="auth-block"
+        className={cn("flex w-full flex-col gap-4", className)}
+      >
         <p role="status">
           We sent a 6-digit code to {email}. Enter it below to sign in.
         </p>
@@ -136,7 +145,7 @@ export function OtpForm({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-4", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-4", className)}>
       {status.kind === "error" ? (
         <AuthErrorAlert error={status.error} overrides={errorMessages} />
       ) : null}

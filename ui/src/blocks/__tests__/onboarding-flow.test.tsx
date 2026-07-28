@@ -225,7 +225,7 @@ describe("OnboardingFlow", () => {
 
     await screen.findByText("You're all set", { selector: "h2" });
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(onComplete.mock.calls[0][0].profile).toEqual({
+    expect(onComplete.mock.calls[0]?.[0].profile).toEqual({
       display_name: "Ada",
     });
   });

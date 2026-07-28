@@ -1,8 +1,34 @@
 "use client";
 
 import { Field as FieldPrimitive } from "@base-ui/react/field";
+import { Fieldset as FieldsetPrimitive } from "@base-ui/react/fieldset";
 import type React from "react";
 import { cn } from "@/lib/utils";
+
+export function Fieldset({
+  className,
+  ...props
+}: FieldsetPrimitive.Root.Props): React.ReactElement {
+  return (
+    <FieldsetPrimitive.Root
+      className={className}
+      data-slot="fieldset"
+      {...props}
+    />
+  );
+}
+export function FieldsetLegend({
+  className,
+  ...props
+}: FieldsetPrimitive.Legend.Props): React.ReactElement {
+  return (
+    <FieldsetPrimitive.Legend
+      className={cn("font-semibold text-foreground", className)}
+      data-slot="fieldset-legend"
+      {...props}
+    />
+  );
+}
 
 export function Field({
   className,
@@ -24,7 +50,7 @@ export function FieldLabel({
   return (
     <FieldPrimitive.Label
       className={cn(
-        "inline-flex items-center gap-2 font-medium text-base/4.5 text-foreground data-disabled:opacity-64 sm:text-sm/4",
+        "inline-flex items-center gap-2 font-medium text-xs text-foreground data-disabled:opacity-64 sm:text-sm/4",
         className,
       )}
       data-slot="field-label"

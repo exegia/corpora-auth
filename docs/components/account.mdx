@@ -1,0 +1,121 @@
+---
+title: "Account blocks"
+description: "Password recovery and change, linked identities, and passkey management."
+---
+
+Every block on this page needs opt-in [permissions](/plugin/permissions) — they all mutate the account.
+
+## ForgotPasswordForm
+
+Requests a recovery message, then redeems the code in-app. A desktop app has no page for the emailed link to land on, so the code path is the one that works.
+
+<Frame caption="ForgotPasswordForm, first step">
+  <img src="/images/blocks/forgot-password-form.png" alt="ForgotPasswordForm: an email field and a Send recovery code button" width="420" />
+</Frame>
+
+Two callbacks for two milestones: `onRequested` after the send, `onRecovered` once a session exists — that is your cue to render `<UpdatePasswordForm />`.
+
+```tsx
+import { ForgotPasswordForm, UpdatePasswordForm } from "@exegia/auth-ui";
+
+const [recovered, setRecovered] = useState(false);
+
+recovered ? (
+  <UpdatePasswordForm onSuccess={() => navigate("/app")} />
+) : (
+  <ForgotPasswordForm onRecovered={() => setRecovered(true)} />
+);
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `onRequested` | `() => void` | Step 1 succeeded — the message is on its way |
+| `onRecovered` | `(session: Session) => void` | Step 2 succeeded — hand off to a password update |
+| `redirectTo` | `string` | Deep link for the emailed recovery link, if you also handle that form |
+| `errorMessages` | `ErrorMessageOverrides` | Per-kind copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+Permissions: `allow-reset-password-for-email` (opt-in) plus the default set.
+
+## UpdatePasswordForm
+
+Signed-in password change: new password and confirmation, with the same `passwordPolicy` seam as sign-up.
+
+<Frame caption="UpdatePasswordForm">
+  <img src="/images/blocks/update-password-form.png" alt="UpdatePasswordForm: new password and confirm new password fields with an Update password button" width="420" />
+</Frame>
+
+It reads the session itself and refuses to submit when there isn't one, so it is safe to render optimistically after recovery.
+
+```tsx
+import { UpdatePasswordForm } from "@exegia/auth-ui";
+
+<UpdatePasswordForm onSuccess={(user) => toast(`Password updated for ${user.email}`)} />;
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `onSuccess` | `(user: User) => void` | The updated user record |
+| `passwordPolicy` | `z.ZodType<string>` | Replaces the default minimum-8 rule |
+| `errorMessages` | `ErrorMessageOverrides` | Per-kind copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+Permissions: `allow-update-user` (opt-in) plus the default set.
+
+## LinkedAccounts
+
+The identities already attached to the account, plus connect buttons for the providers you declare that are not connected yet.
+
+<Frame caption="LinkedAccounts with one identity and two connect candidates">
+  <img src="/images/blocks/linked-accounts.png" alt="LinkedAccounts: the email identity with a Disconnect action and a note that it is the only sign-in method, plus Connect GitHub and Connect Google buttons" width="420" />
+</Frame>
+
+Connecting opens the system browser with in-flight and cancel handling, exactly like sign-in. The last remaining sign-in method refuses to disconnect and says why, rather than failing after the click.
+
+```tsx
+import { LinkedAccounts } from "@exegia/auth-ui";
+
+<LinkedAccounts
+  providers={["github", "google"]}
+  onLinked={(identities) => console.log(identities.length)}
+/>;
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `providers` | `Provider[]` **(required)** | Connect candidates to offer |
+| `onLinked` | `(identities: Identity[]) => void` | The full list after a successful link |
+| `onUnlinked` | `(identities: Identity[]) => void` | The full list after a disconnect |
+| `errorMessages` | `ErrorMessageOverrides` | Per-kind copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+Permissions: `allow-get-identities`, `allow-link-identity`, `allow-unlink-identity` (opt-in), plus `enable_manual_linking = true` on the [project](/plugin/provider-setup).
+
+## PasskeyManager
+
+Settings block: list, register, rename inline, delete behind an explicit confirmation.
+
+<Frame caption="PasskeyManager, empty state">
+  <img src="/images/blocks/passkey-manager.png" alt="PasskeyManager empty state: no passkeys registered yet, with an Add a passkey button" width="420" />
+</Frame>
+
+A newly registered passkey gets a server-derived name — rename it after.
+
+```tsx
+import { PasskeyManager } from "@exegia/auth-ui";
+
+<PasskeyManager onRegistered={(passkey) => toast(`Added ${passkey.friendlyName}`)} />;
+```
+
+| Prop | Type | Does |
+| --- | --- | --- |
+| `onRegistered` | `(passkey: Passkey) => void` | A new credential was added |
+| `onDeleted` | `(passkeyId: string) => void` | A credential was removed |
+| `errorMessages` | `ErrorMessageOverrides` | Per-kind copy overrides |
+| `className` | `string` | Merged onto the root element |
+
+<Warning>
+Deleting the last passkey is allowed — the server does not block it. The block warns before it happens; keep another sign-in method on every account.
+</Warning>
+
+Permissions: `allow-register-passkey`, `allow-list-passkeys`, `allow-rename-passkey`, `allow-delete-passkey`, `allow-get-passkey-capability` (all opt-in). See [Passkeys](/plugin/passkeys) for the project prerequisites.

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { Provider, Session } from "@exegia/plugin-supabase-auth";
+import type { AuthError, Provider, Session } from "@exegia/plugin-supabase-auth";
 import { Button } from "@/components/ui/button";
+import { ProviderIcon } from "@/components/ui/provider-icon";
 import { useAuth } from "@/hooks/use-auth";
 import type { ErrorMessageOverrides } from "@/lib/error-messages";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,8 @@ export function providerLabel(provider: Provider): string {
 export interface SocialButtonsProps {
   providers: Provider[];
   onSuccess?: (session: Session) => void;
+  /** See `SignInFormProps.onError`. Fires alongside the inline alert. */
+  onError?: (error: AuthError) => void;
   errorMessages?: ErrorMessageOverrides;
   className?: string;
 }
@@ -38,6 +41,7 @@ export interface SocialButtonsProps {
 export function SocialButtons({
   providers,
   onSuccess,
+  onError,
   errorMessages,
   className,
 }: SocialButtonsProps): React.ReactElement {
@@ -60,6 +64,7 @@ export function SocialButtons({
     // oauthFlowInterrupted (cancel/abandon) and all other kinds leave the
     // buttons enabled so the user can retry.
     setStatus({ kind: "error", error: result.error });
+    onError?.(result.error);
   }
 
   async function cancel(): Promise<void> {
@@ -67,12 +72,13 @@ export function SocialButtons({
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-2", className)}>
+    <div data-slot="auth-block" className={cn("flex w-full flex-col gap-2", className)}>
       {status.kind === "error" ? (
         <AuthErrorAlert error={status.error} overrides={errorMessages} />
       ) : null}
       {providers.map((provider) => (
         <Button
+          className="justify-start gap-3"
           disabled={inFlight !== null}
           key={provider}
           loading={inFlight === provider}
@@ -80,11 +86,18 @@ export function SocialButtons({
           type="button"
           variant="outline"
         >
-          Continue with {providerLabel(provider)}
+          <ProviderIcon
+            className="in-[[data-slot=button]:hover]:scale-110 transition-transform duration-(--duration-quick) ease-(--ease-bounce)"
+            provider={provider}
+          />
+          <span className="flex-1 text-center">
+            Continue with {providerLabel(provider)}
+          </span>
         </Button>
       ))}
       {inFlight !== null ? (
         <Button
+          data-motion="pop"
           onClick={() => void cancel()}
           type="button"
           variant="ghost"

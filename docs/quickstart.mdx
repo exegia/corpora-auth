@@ -1,0 +1,151 @@
+---
+title: "Quickstart"
+description: "Install the plugin and bindings, point them at a Supabase project, and sign someone in."
+---
+
+Email/password, magic links and one-time codes work against a fresh local Supabase stack with no extra credentials. OAuth, account linking and passkeys need project configuration described in [Provider setup](/plugin/provider-setup).
+
+## Prerequisites
+
+- A Tauri v2 app with a Rust `src-tauri/` crate
+- A Supabase project (hosted, or a local stack via `supabase start`)
+- A GitHub token with `read:packages` to install the npm packages from GitHub Packages
+
+<Steps>
+<Step title="Install the plugin">
+
+```toml src-tauri/Cargo.toml
+[dependencies]
+tauri-plugin-supabase-auth = { git = "https://github.com/exegia/corpora-auth" }
+```
+
+```rust src-tauri/src/lib.rs
+tauri::Builder::default()
+    .plugin(tauri_plugin_supabase_auth::init())
+```
+
+</Step>
+
+<Step title="Install the frontend packages">
+
+Both npm packages live on GitHub Packages, so point the `@exegia` scope there:
+
+```ini .npmrc
+@exegia:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+```bash
+bun add @exegia/plugin-supabase-auth
+bun add @exegia/auth-ui        # optional: the UI kit
+```
+
+</Step>
+
+<Step title="Configure the project">
+
+```json src-tauri/tauri.conf.json
+{
+  "plugins": {
+    "supabase-auth": {
+      "url": "https://your-project.supabase.co",
+      "publishableKey": "your-publishable-or-anon-key"
+    }
+  }
+}
+```
+
+<Warning>
+Never use the service-role key here. It is readable from the app bundle and bypasses row-level security.
+</Warning>
+
+Everything else has defaults — see [Configuration](/plugin/configuration).
+
+</Step>
+
+<Step title="Grant permissions">
+
+```json src-tauri/capabilities/default.json
+{
+  "permissions": ["core:default", "supabase-auth:default"]
+}
+```
+
+`supabase-auth:default` covers the everyday lifecycle. Account mutations such as password reset, profile updates, identity linking and passkey management are opt-in — see [Permissions](/plugin/permissions).
+
+</Step>
+
+<Step title="Sign someone in">
+
+The fastest path is a UI kit block:
+
+```tsx
+import { SignInForm, useSession } from "@exegia/auth-ui";
+import "@exegia/auth-ui/styles.css";
+
+export default function App() {
+  const { status, user } = useSession();
+
+  if (status === "loading") return <p>Restoring session…</p>;
+  if (status === "signedIn") return <p>Signed in as {user?.email}</p>;
+
+  return (
+    <SignInForm
+      showSocial={["github", "google"]}
+      onForgotPassword={() => setScreen("recover")}
+    />
+  );
+}
+```
+
+Or call the bindings directly:
+
+```ts
+import {
+  signUp,
+  signInWithPassword,
+  onAuthStateChange,
+} from "@exegia/plugin-supabase-auth";
+
+await signUp({ email, password });
+await signInWithPassword({ email, password });
+
+const unlisten = await onAuthStateChange(({ event, session }) => {
+  // "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED" | "PASSWORD_RECOVERY" | "IDENTITIES_CHANGED"
+});
+```
+
+And from Rust, symmetrically:
+
+```rust
+use tauri_plugin_supabase_auth::SupabaseAuthExt;
+
+let auth = app.supabase_auth();
+let session = auth.sign_in_with_password("person@example.com", "correct horse battery").await?;
+auth.on_auth_state_change(|payload| println!("auth: {:?}", payload.event));
+```
+
+</Step>
+</Steps>
+
+## Try the example app
+
+The repository ships a runnable multi-window demo wired to every block against a local Supabase stack.
+
+```bash
+git clone https://github.com/exegia/corpora-auth && cd corpora-auth
+make setup                # bun install + toolchain preflight
+make supabase-up          # local stack; mail UI at http://127.0.0.1:54324
+make -C examples/tauri-app dev
+```
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Handle errors" icon="triangle-alert" href="/plugin/errors">
+    Every rejection is a structured `AuthError` with a switchable `kind`.
+  </Card>
+  <Card title="Add social sign-in" icon="globe" href="/plugin/oauth">
+    How the loopback + PKCE round-trip works, and what to allow-list.
+  </Card>
+</Columns>

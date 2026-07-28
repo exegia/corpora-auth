@@ -1,0 +1,209 @@
+---
+title: "JavaScript API"
+description: "Every function exported by @exegia/plugin-supabase-auth, and the auth-state event stream."
+---
+
+`@exegia/plugin-supabase-auth` wraps Tauri's `invoke` with types. There is no client to construct and no provider to mount — import the function you need.
+
+```ts
+import {
+  signInWithPassword,
+  onAuthStateChange,
+  isAuthError,
+} from "@exegia/plugin-supabase-auth";
+```
+
+Sessions returned to the webview are sanitized: they carry the access token, expiry, token type and user, and never a refresh token.
+
+## Session lifecycle
+
+<ParamField path="signUp({ email, password, data? })" type="Promise<SignUpResult>">
+  `{ status: "signedIn" | "pendingConfirmation", session? }`. Reports `pendingConfirmation` when the project requires email confirmation. `data` becomes `user_metadata`.
+</ParamField>
+
+<ParamField path="signInWithPassword({ email, password })" type="Promise<Session>">
+  Email and password sign-in.
+</ParamField>
+
+<ParamField path="signInWithOtp({ email | phone, redirectTo? })" type="Promise<void>">
+  Sends a magic link or one-time code.
+</ParamField>
+
+<ParamField path="verifyOtp({ email | phone, token, type })" type="Promise<Session>">
+  Redeems a code. `type` is `"email" | "sms" | "recovery"`.
+</ParamField>
+
+<ParamField path="signInWithOAuth({ provider, scopes? })" type="Promise<Session>">
+  Opens the system browser and resolves when the loopback round-trip completes. See [OAuth](/plugin/oauth).
+</ParamField>
+
+<ParamField path="cancelOAuthFlow()" type="Promise<void>">
+  Aborts an in-flight browser round-trip so the plugin stops waiting on the loopback instead of holding it for the full flow timeout.
+</ParamField>
+
+<ParamField path="signOut()" type="Promise<void>">
+  Local-first: state clears even if the network is down.
+</ParamField>
+
+<ParamField path="getSession()" type="Promise<Session | null>">
+  The current session, or `null`.
+</ParamField>
+
+<ParamField path="getUser()" type="Promise<User | null>">
+  The current user, or `null`.
+</ParamField>
+
+<ParamField path="refreshSession()" type="Promise<Session>">
+  Manual refresh. Background refresh is automatic unless `autoRefresh` is disabled.
+</ParamField>
+
+## Account
+
+These require opt-in [permissions](/plugin/permissions).
+
+<ParamField path="resetPasswordForEmail({ email, redirectTo? })" type="Promise<void>">
+  Sends a recovery message. Needs `allow-reset-password-for-email`.
+</ParamField>
+
+<ParamField path="updateUser({ email?, password?, data? })" type="Promise<User>">
+  Updates the signed-in user. Needs `allow-update-user`.
+</ParamField>
+
+<ParamField path="getIdentities()" type="Promise<Identity[]>">
+  The sign-in identities attached to the account. Needs `allow-get-identities`.
+</ParamField>
+
+<ParamField path="linkIdentity({ provider, scopes? })" type="Promise<Identity[]>">
+  Attaches a provider identity to the current account via the system browser. Needs `allow-link-identity` and `enable_manual_linking` on the project.
+</ParamField>
+
+<ParamField path="unlinkIdentity({ identityId })" type="Promise<Identity[]>">
+  Disconnects an identity. Removing the last sign-in method is refused with `lastSignInMethod`. Needs `allow-unlink-identity`.
+</ParamField>
+
+## Passkeys
+
+<ParamField path="getPasskeyCapability()" type="Promise<PasskeyCapability>">
+  `{ usable, reason? }`. Never touches the network — gate passkey UI on it.
+</ParamField>
+
+<ParamField path="signInWithPasskey()" type="Promise<PasskeySignInResult>">
+  Discoverable sign-in, no email needed. Resolves `{ status: "cancelled" }` when the user dismisses the OS prompt — that is not an error.
+</ParamField>
+
+<ParamField path="registerPasskey()" type="Promise<PasskeyRegistrationResult>">
+  Adds a passkey to the current account. The name is server-derived; rename it afterwards.
+</ParamField>
+
+<ParamField path="listPasskeys()" type="Promise<Passkey[]>">
+  Credentials registered on the account.
+</ParamField>
+
+<ParamField path="renamePasskey({ passkeyId, friendlyName })" type="Promise<Passkey>">
+  `friendlyName` is 1–120 characters.
+</ParamField>
+
+<ParamField path="deletePasskey({ passkeyId })" type="Promise<void>">
+  Deleting the last passkey is not blocked server-side. Confirm with the user first.
+</ParamField>
+
+<ParamField path="passkeyRegistrationOptions() / passkeyRegistrationVerify({ challengeId, credential })" type="Promise<PasskeyChallenge> / Promise<PasskeyRegistrationResult>">
+  Two-step surface for apps running their own WebAuthn ceremony.
+</ParamField>
+
+<ParamField path="passkeyAuthenticationOptions() / passkeyAuthenticationVerify({ challengeId, credential })" type="Promise<PasskeyChallenge> / Promise<PasskeySignInResult>">
+  The authentication half of the same surface.
+</ParamField>
+
+## Auth state events
+
+The plugin pushes state changes over a Tauri event. There is no polling.
+
+```ts
+import { onAuthStateChange } from "@exegia/plugin-supabase-auth";
+
+const unlisten = await onAuthStateChange(({ event, session }) => {
+  switch (event) {
+    case "SIGNED_IN":
+    case "TOKEN_REFRESHED":
+      setSession(session);
+      break;
+    case "SIGNED_OUT":
+      setSession(null);
+      break;
+  }
+});
+
+// later
+unlisten();
+```
+
+| Event | Fires when |
+| --- | --- |
+| `SIGNED_IN` | A session was established, including a session restored at startup |
+| `SIGNED_OUT` | The session was cleared |
+| `TOKEN_REFRESHED` | A background or manual refresh produced a new access token |
+| `PASSWORD_RECOVERY` | A recovery code was redeemed and a session exists for the password change |
+| `IDENTITIES_CHANGED` | An identity was linked or unlinked |
+| `PASSKEYS_CHANGED` | A passkey was registered, renamed or deleted |
+
+## Types
+
+```ts
+/** Frontend-sanitized session — never contains the refresh token. */
+interface Session {
+  accessToken: string;
+  expiresAt: string; // ISO 8601
+  tokenType: string;
+  user: User;
+}
+
+interface User {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  emailConfirmedAt: string | null;
+  phoneConfirmedAt: string | null;
+  lastSignInAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userMetadata: Record<string, unknown>;
+  appMetadata: Record<string, unknown>;
+}
+
+interface Identity {
+  identityId: string; // row key used for unlinking
+  providerSubject: string;
+  provider: string;
+  email: string | null;
+  createdAt: string | null;
+  lastSignInAt: string | null;
+}
+
+interface Passkey {
+  id: string;
+  friendlyName: string | null;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+}
+
+interface PasskeyCapability {
+  usable: boolean;
+  reason?: "unsupportedPlatform" | (string & {});
+}
+
+type Provider =
+  | "google"
+  | "github"
+  | "gitlab"
+  | "bitbucket"
+  | "azure"
+  | "facebook"
+  | "twitter"
+  | "discord"
+  | "slack"
+  | "apple"
+  | (string & {});
+```
+
+Rejections are always a structured [`AuthError`](/plugin/errors), never a bare string.

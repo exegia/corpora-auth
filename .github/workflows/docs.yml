@@ -1,0 +1,65 @@
+name: Docs
+
+# This workflow does NOT publish the site.
+#
+# Publishing is the Mintlify GitHub App's job: it watches the configured deploy
+# branch (main) and redeploys https://<subdomain>.mintlify.app on every merge.
+# Mintlify has no static build a runner could produce — `mint export` is
+# Enterprise-only and emits a Node `serve.js` bundle, not a static tree — so
+# there is nothing here for GitHub Pages to host.
+#
+# What this workflow adds is a pre-flight gate. Mintlify's own broken-link CI
+# check requires a Pro/Enterprise plan and only runs on PRs targeting the deploy
+# branch. Our flow is doc/* -> dev -> next -> main, so a broken link would
+# otherwise surface three merges after the change that caused it.
+on:
+  pull_request:
+    paths:
+      - docs/**
+      - .github/workflows/docs.yml
+  push:
+    branches: [main, next, dev]
+    paths:
+      - docs/**
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+# Least privilege: this job only ever reads the checkout.
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # setup-node rather than oven-sh/setup-bun, even though the repo is
+      # bun-native: the org allowed-actions policy admits GitHub-owned and
+      # verified creators only, and a single disallowed action fails the whole
+      # workflow at startup with no logs (this is what ails ci.yml). The mint
+      # CLI is an npm global anyway, so bun buys nothing here.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: docs/.nvmrc
+
+      # mint's dependency tree pulls puppeteer, whose postinstall downloads a
+      # Chrome build. broken-links is a static scan and never launches a
+      # browser, so skip it — the download is slow and its failure mode is a
+      # silent non-zero install.
+      - name: Install the Mintlify CLI
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+        run: npm i -g mint@latest
+
+      # A broken CLI install exits non-zero with no output at all, which reads
+      # identically to a link failure. Prove it runs before trusting its verdict.
+      - name: Verify the CLI runs
+        run: mint --version
+
+      # working-directory is set per step rather than via `defaults`, so that
+      # setup-node's `node-version-file` above stays unambiguously
+      # repo-root-relative. mint resolves docs.json from the cwd.
+      - name: Check internal links
+        working-directory: docs
+        run: mint broken-links --check-anchors --check-redirects
