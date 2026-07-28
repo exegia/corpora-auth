@@ -1,0 +1,76 @@
+name: Publish Release
+
+# Semver release, step 2: runs once a release.yml PR (branch release/v*)
+# merges into main. Tags the merge commit, publishes both npm packages to
+# GitHub Packages, and creates the GitHub Release. Never pushes to main —
+# only pushes a tag and calls the releases/packages APIs — so it needs no
+# bypass on the "Protect main branch" ruleset.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency: release
+
+jobs:
+  publish:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the tag, create the release
+      packages: write   # publish to GitHub Packages
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+
+      - name: Read version
+        id: version
+        run: echo "version=$(node -p "require('./guest-js/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Tag release commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ steps.version.outputs.version }}" -m "v${{ steps.version.outputs.version }}"
+          git push origin "refs/tags/v${{ steps.version.outputs.version }}"
+
+      # bun publish strips workspace:* protocols but (unlike pnpm) does not
+      # apply publishConfig field overrides (main/types/exports), which the
+      # ui package relies on to point consumers at dist/ instead of src/.
+      - name: Apply publishConfig field overrides
+        working-directory: ui
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const { registry, ...overrides } = pkg.publishConfig ?? {};
+            Object.assign(pkg, overrides);
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          '
+
+      - name: Publish @exegia/plugin-supabase-auth
+        working-directory: guest-js
+        run: bun publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish @exegia/auth-ui
+        working-directory: ui
+        run: bun publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "v${{ steps.version.outputs.version }}" \
+            --generate-notes
