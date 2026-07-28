@@ -1,12 +1,12 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "willow",
   "name": "Tauri Plugin Supabase Auth",
   "description": "Supabase authentication for Tauri v2 desktop apps, with typed webview bindings and a React UI kit.",
   "colors": {
-    "primary": "#0D7A54",
-    "light": "#3FCF8E",
-    "dark": "#159463"
+    "primary": "#3514ef",
+    "light": "#6354ff",
+    "dark": "#401eff"
   },
   "navigation": {
     "tabs": [
@@ -81,5 +81,26 @@
     "socials": {
       "github": "https://github.com/exegia/corpora-auth"
     }
+  },
+  "background": {
+    "color": {
+      "light": "#f4f4ff",
+      "dark": "#111111"
+    }
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "fonts": {
+    "family": "Ubuntu"
+  },
+  "logo": {
+    "light": "/docs/images/light.png",
+    "dark": "/docs/images/dark.png",
+    "href": "https://www.exegia.co"
+  },
+  "favicon": {
+    "light": "/docs/images/favico-light.png",
+    "dark": "/docs/images/favico-dark.png"
   }
 }
