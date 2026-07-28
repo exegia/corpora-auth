@@ -1,23 +1,21 @@
 name: Release
 
-# Semver release, step 1: bumps versions in lockstep and opens a PR against
-# main with the bump commit. The "Protect main branch" ruleset requires PRs
-# with review + status checks, so this workflow no longer pushes to main
-# directly — see publish-release.yml for what runs after the PR merges.
+# Promotion, step 1: takes the currently open release train on `next` (a
+# `vX.Y.Z-rc.*` tag, created by stage-tag.yml as PRs merge into next) and
+# opens a PR that carries the matching version bump into main. The version is
+# NOT chosen here -- it was already decided when the train opened, from lines
+# changed in the PR that opened it. This workflow only bumps package/crate
+# versions to match and opens the PR; merging it into main is a real merge
+# (required so the next-side "is there an open train" ancestry check in
+# stage-tag.yml ever closes), and that merge triggers publish-release.yml,
+# which tags, publishes, and creates the GitHub Release.
 on:
   workflow_dispatch:
-    inputs:
-      bump:
-        description: "Semver bump"
-        required: true
-        type: choice
-        options: [patch, minor, major]
-        default: minor
 
 concurrency: release
 
 jobs:
-  release:
+  promote:
     runs-on: ubuntu-latest
     permissions:
       contents: write        # push the release/* branch
@@ -25,7 +23,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: next
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Find the open release train
+        id: train
+        run: |
+          set -euo pipefail
+
+          # "Open train" = a vX.Y.Z-rc.* tag exists at all. See stage-tag.yml
+          # for why this beats an ancestry check (main allows squash merges).
+          OPEN_TAG=$(git tag --list 'v*.*.*-rc.*' | sort -V | tail -n1)
+
+          if [ -z "$OPEN_TAG" ]; then
+            echo "::error::No open release train on next (no v*.*.*-rc.* tag ahead of main). Nothing to promote." >&2
+            exit 1
+          fi
+
+          VERSION="${OPEN_TAG#v}"
+          VERSION="${VERSION%-rc.*}"
+          echo "tag=$OPEN_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Promoting $OPEN_TAG -> v$VERSION"
+
       # Reads the bun version from the root package.json "packageManager" field.
       - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
@@ -33,25 +54,28 @@ jobs:
           node-version: 24
       - run: bun install --frozen-lockfile
 
-      # Gate: never open a release PR red.
+      # Sanity gate only -- the test suite already ran on next for every PR in
+      # this train. Re-running it here would be exactly the redundancy this
+      # pipeline is designed to avoid.
       - run: bun run build
-      - run: bun run --filter @exegia/auth-ui test
 
-      - name: Bump versions in lockstep
-        id: bump
+      - name: Set versions in lockstep
+        env:
+          VERSION: ${{ steps.train.outputs.version }}
         run: |
-          # --no-workspaces-update: @exegia/auth-ui depends on the bindings via
-          # `workspace:*`, and npm's post-version dependency pass does not
-          # understand that protocol — it aborts with EUNSUPPORTEDPROTOCOL.
-          # Only the version field needs changing here; bun install owns the
-          # workspace linking.
-          (cd guest-js && npm version ${{ inputs.bump }} --no-git-tag-version --no-workspaces-update)
-          (cd ui && npm version ${{ inputs.bump }} --no-git-tag-version --no-workspaces-update)
-          VERSION=$(node -p "require('./guest-js/package.json').version")
+          set -euo pipefail
+          for pkg in guest-js ui; do
+            node -e '
+              const fs = require("fs");
+              const p = process.argv[1] + "/package.json";
+              const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
+              pkg.version = process.env.VERSION;
+              fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
+            ' "$pkg"
+          done
           # Keep the crate version aligned (first `version =` in [package]).
           python3 -c "import re,sys; p='Cargo.toml'; s=open(p).read(); open(p,'w').write(re.sub(r'^version = \".*\"$', 'version = \"'+sys.argv[1]+'\"', s, count=1, flags=re.M))" "$VERSION"
           cargo update --workspace --quiet || true   # refresh Cargo.lock version entry
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       # bun.lock pins each workspace member's own version (e.g. guest-js ->
       # "0.2.2"), and `bun publish` resolves `workspace:*` deps against that
@@ -66,20 +90,32 @@ jobs:
         run: rm -f bun.lock && bun install
 
       - name: Commit and push release branch
+        env:
+          VERSION: ${{ steps.train.outputs.version }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "release/v${{ steps.bump.outputs.version }}"
+          git checkout -b "release/v${VERSION}"
           git add -A
-          git commit -m "chore(release): v${{ steps.bump.outputs.version }}"
-          git push origin "release/v${{ steps.bump.outputs.version }}"
+          git commit -m "chore(release): v${VERSION}"
+          git push origin "release/v${VERSION}"
 
-      - name: Open release PR
+      - name: Open promotion PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.train.outputs.version }}
         run: |
+          set -euo pipefail
+          PR_LIST=$(gh pr list --base next --state merged --label "release:v${VERSION}" \
+            --json number,title --jq '.[] | "- #\(.number) \(.title)"')
+          BODY=$(printf '%s\n\n%s\n\n%s\n' \
+            "Promotes the v${VERSION} release train from \`next\` to \`main\`." \
+            "${PR_LIST:-(no labeled PRs found)}" \
+            "Merging this PR triggers \`publish-release.yml\`, which tags \`v${VERSION}\`, publishes both npm packages, and creates the GitHub Release.")
           gh pr create \
             --base main \
-            --head "release/v${{ steps.bump.outputs.version }}" \
-            --title "chore(release): v${{ steps.bump.outputs.version }}" \
-            --body "Automated version bump (${{ inputs.bump }}) to v${{ steps.bump.outputs.version }}. Merging this PR triggers \`publish-release.yml\`, which tags, publishes both npm packages, and creates the GitHub Release."
+            --head "release/v${VERSION}" \
+            --title "chore(release): v${VERSION}" \
+            --body "$BODY"

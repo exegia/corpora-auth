@@ -1,8 +1,13 @@
 name: CI
 
+# main only ever receives release/* -> main promotion PRs (enforced by
+# pr-base-policy.yml) whose commits already passed this suite on next. Re-running
+# rust/web/e2e there is pure redundancy, so main is dropped from push entirely and
+# the heavy jobs below skip whenever the PR's base is main — publish-release.yml's
+# `bun run build` is the only thing that still runs against that commit.
 on:
   push:
-    branches: [main, next, dev]
+    branches: [next, dev]
   pull_request:
 
 # Least privilege for every job below: CI only ever reads the checkout.
@@ -13,6 +18,7 @@ permissions:
 
 jobs:
   rust:
+    if: github.event_name != 'pull_request' || github.base_ref != 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +40,7 @@ jobs:
   # Compilation + platform-agnostic tests only: webauthn.dll and the Windows
   # Hello prompt still need the manual smoke checklist on real hardware.
   rust-windows:
+    if: github.event_name != 'pull_request' || github.base_ref != 'main'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +59,7 @@ jobs:
   # that stays the manual smoke checklist (T026).
   # NOTE: macOS runners bill at 10x (Windows 2x, Linux 1x).
   rust-macos:
+    if: github.event_name != 'pull_request' || github.base_ref != 'main'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +71,7 @@ jobs:
       - run: cargo test
 
   web:
+    if: github.event_name != 'pull_request' || github.base_ref != 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,6 +92,7 @@ jobs:
 
   # SC-006: full auth lifecycle against a real local Supabase stack.
   e2e:
+    if: github.event_name != 'pull_request' || github.base_ref != 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -2,8 +2,9 @@ name: Publish Release
 
 # Semver release, step 2: runs once a release.yml PR (branch release/v*)
 # merges into main. Tags the merge commit, publishes both npm packages to
-# GitHub Packages, and creates the GitHub Release. Never pushes to main —
-# only pushes a tag and calls the releases/packages APIs — so it needs no
+# GitHub Packages, creates the GitHub Release, and retires the vX.Y.Z-rc.*
+# staging tag stage-tag.yml created on next. Never pushes to main — only
+# pushes/deletes tags and calls the releases/packages APIs — so it needs no
 # bypass on the "Protect main branch" ruleset.
 on:
   pull_request:
@@ -23,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
+          fetch-tags: true
       - uses: oven-sh/setup-bun@v2
       # node-only, no registry-url: `bun publish` doesn't reliably pick up
       # .npmrc auth (open bug, oven-sh/bun#24124 — `npm whoami` succeeds
@@ -96,3 +99,23 @@ jobs:
           gh release create "v${{ steps.version.outputs.version }}" \
             --title "v${{ steps.version.outputs.version }}" \
             --generate-notes
+
+      # Closes the staging cycle: stage-tag.yml and release.yml treat "does a
+      # vX.Y.Z-rc.* tag exist" as the sole open-train signal (an ancestry
+      # check isn't reliable here since main allows squash merges). This
+      # delete IS the gate-closer, not a cleanup nicety -- if it silently
+      # failed, every future merge into next would think this train is still
+      # open and never mint a new one. Fail loudly instead.
+      - name: Retire the staging tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAGS=$(git tag --list "v${VERSION}-rc.*")
+          if [ -z "$TAGS" ]; then
+            echo "::error::No v${VERSION}-rc.* staging tag found to retire. The next-side train gate will not reopen correctly -- investigate before merging further release PRs." >&2
+            exit 1
+          fi
+          for t in $TAGS; do
+            git push origin --delete "refs/tags/$t"
+          done
