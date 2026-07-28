@@ -1,7 +1,9 @@
 name: Release
 
-# One-click semver release: bumps versions in lockstep, tags, publishes both
-# npm packages to GitHub Packages, and creates a GitHub Release.
+# Semver release, step 1: bumps versions in lockstep and opens a PR against
+# main with the bump commit. The "Protect main branch" ruleset requires PRs
+# with review + status checks, so this workflow no longer pushes to main
+# directly — see publish-release.yml for what runs after the PR merges.
 on:
   workflow_dispatch:
     inputs:
@@ -18,24 +20,20 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # push version commit + tag, create the release
-      packages: write   # publish to GitHub Packages
+      contents: write        # push the release/* branch
+      pull-requests: write   # open the release PR
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
       # Reads the bun version from the root package.json "packageManager" field.
       - uses: oven-sh/setup-bun@v2
-      # Still needed: writes the .npmrc (registry + auth token) that
-      # `bun publish` reads, and provides `node` for the scripts below.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://npm.pkg.github.com
       - run: bun install --frozen-lockfile
 
-      # Gate: never release red. Build first — the UI tests need the
-      # bindings package's dist to exist for module resolution.
+      # Gate: never open a release PR red.
       - run: bun run build
       - run: bun run --filter @exegia/auth-ui test
 
@@ -55,45 +53,21 @@ jobs:
           cargo update --workspace --quiet || true   # refresh Cargo.lock version entry
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Commit and tag
+      - name: Commit and push release branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "release/v${{ steps.bump.outputs.version }}"
           git add -A
           git commit -m "chore(release): v${{ steps.bump.outputs.version }}"
-          git tag -a "v${{ steps.bump.outputs.version }}" -m "v${{ steps.bump.outputs.version }}"
-          git push origin main "refs/tags/v${{ steps.bump.outputs.version }}"
+          git push origin "release/v${{ steps.bump.outputs.version }}"
 
-      # bun publish strips workspace:* protocols but (unlike pnpm) does not
-      # apply publishConfig field overrides (main/types/exports), which the
-      # ui package relies on to point consumers at dist/ instead of src/.
-      # Apply them manually after the release commit so they never land in git.
-      - name: Apply publishConfig field overrides
-        working-directory: ui
-        run: |
-          node -e '
-            const fs = require("fs");
-            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            const { registry, ...overrides } = pkg.publishConfig ?? {};
-            Object.assign(pkg, overrides);
-            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
-          '
-
-      - name: Publish @exegia/plugin-supabase-auth
-        working-directory: guest-js
-        run: bun publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish @exegia/auth-ui
-        working-directory: ui
-        run: bun publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create GitHub Release
+      - name: Open release PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "v${{ steps.bump.outputs.version }}" \
-            --title "v${{ steps.bump.outputs.version }}" \
-            --generate-notes
+          gh pr create \
+            --base main \
+            --head "release/v${{ steps.bump.outputs.version }}" \
+            --title "chore(release): v${{ steps.bump.outputs.version }}" \
+            --body "Automated version bump (${{ inputs.bump }}) to v${{ steps.bump.outputs.version }}. Merging this PR triggers \`publish-release.yml\`, which tags, publishes both npm packages, and creates the GitHub Release."
