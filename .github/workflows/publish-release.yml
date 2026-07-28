@@ -25,11 +25,11 @@ jobs:
           ref: main
       - uses: oven-sh/setup-bun@v2
       # node-only, no registry-url: `bun publish` doesn't reliably pick up
-      # the .npmrc that setup-node's registry-url option writes to a global
-      # location (open bug, oven-sh/bun#24124 — `npm whoami` succeeds right
-      # before `bun publish` still fails "missing authentication"). Each
-      # publish step below writes its own project-level .npmrc instead,
-      # which bun does read reliably.
+      # .npmrc auth (open bug, oven-sh/bun#24124 — `npm whoami` succeeds
+      # right before `bun publish` still fails "missing authentication"),
+      # and a project-level .npmrc alone didn't fix it either (tried in a
+      # prior version of this workflow, still failed on v0.4.0). See the
+      # publish steps below for the two-pronged workaround.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -61,22 +61,31 @@ jobs:
             fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
           '
 
+      # Verified locally (2026-07-28, bun 1.3.14): `bun publish` with a
+      # project-level .npmrc gives the same client-side "missing
+      # authentication" failure this workflow hit on v0.4.0 — no network
+      # call is even attempted. With XDG_CONFIG_HOME=$HOME and .npmrc
+      # written there instead, bun sends the token and gets a real server
+      # response (401 for a bad token), confirming this placement is what
+      # bun's global-config lookup actually reads.
       - name: Publish @exegia/plugin-supabase-auth
         working-directory: guest-js
         run: |
-          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          echo "@exegia:registry=https://npm.pkg.github.com/" >> .npmrc
+          export XDG_CONFIG_HOME="$HOME"
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > "$XDG_CONFIG_HOME/.npmrc"
+          echo "@exegia:registry=https://npm.pkg.github.com/" >> "$XDG_CONFIG_HOME/.npmrc"
           bun publish
-          rm -f .npmrc
+          rm -f "$XDG_CONFIG_HOME/.npmrc"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish @exegia/auth-ui
         working-directory: ui
         run: |
-          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          echo "@exegia:registry=https://npm.pkg.github.com/" >> .npmrc
+          export XDG_CONFIG_HOME="$HOME"
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > "$XDG_CONFIG_HOME/.npmrc"
+          echo "@exegia:registry=https://npm.pkg.github.com/" >> "$XDG_CONFIG_HOME/.npmrc"
           bun publish
-          rm -f .npmrc
+          rm -f "$XDG_CONFIG_HOME/.npmrc"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
