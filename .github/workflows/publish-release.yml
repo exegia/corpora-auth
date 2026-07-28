@@ -24,10 +24,15 @@ jobs:
         with:
           ref: main
       - uses: oven-sh/setup-bun@v2
+      # node-only, no registry-url: `bun publish` doesn't reliably pick up
+      # the .npmrc that setup-node's registry-url option writes to a global
+      # location (open bug, oven-sh/bun#24124 — `npm whoami` succeeds right
+      # before `bun publish` still fails "missing authentication"). Each
+      # publish step below writes its own project-level .npmrc instead,
+      # which bun does read reliably.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://npm.pkg.github.com
       - run: bun install --frozen-lockfile
       - run: bun run build
 
@@ -58,12 +63,20 @@ jobs:
 
       - name: Publish @exegia/plugin-supabase-auth
         working-directory: guest-js
-        run: bun publish
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          echo "@exegia:registry=https://npm.pkg.github.com/" >> .npmrc
+          bun publish
+          rm -f .npmrc
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish @exegia/auth-ui
         working-directory: ui
-        run: bun publish
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          echo "@exegia:registry=https://npm.pkg.github.com/" >> .npmrc
+          bun publish
+          rm -f .npmrc
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
