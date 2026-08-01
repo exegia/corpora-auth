@@ -10,13 +10,13 @@ One monorepo shipping four artifacts from a single lockstep version:
 | ---------------------- | ---------------------------------------------------------- | ----------------------------- |
 | `src/`, `permissions/` | `tauri-plugin-supabase-auth` (Rust crate)                  | crates.io (not yet published) |
 | `guest-js/`            | `@exegia/plugin-supabase-auth` — typed webview bindings    | GitHub Packages               |
-| `ui/`                  | `@exegia/auth-ui` — React blocks + hooks                   | GitHub Packages               |
+| `react/`               | `@exegia/auth-ui` — React hooks                            | GitHub Packages               |
 | `examples/tauri-app/`  | Runnable demo wiring all three together                    | not published                 |
-| `examples/web-app/`    | Browser-only demo of the UI kit (Bun dev server, no Tauri) | not published                 |
+| `examples/web-app/`    | Browser-only demo of the hooks (Bun dev server, no Tauri)  | not published                 |
 
 Package manager is **bun** (pinned in root `package.json`). Node is still required — vitest and tsc shims spawn it, and CI uses `setup-node` for registry auth.
 
-The workspace installs with the **isolated** linker (`bunfig.toml`), and the versions shared by `ui/` and both example apps live in the root `package.json` as a default `catalog` plus named `catalogs` (`build`, `testing`). Consumers reference them as `catalog:` / `catalog:build` / `catalog:testing`. Both facts exist for the same reason — see "one React, or nothing renders" below.
+The workspace installs with the **isolated** linker (`bunfig.toml`), and the versions shared by `react/` and both example apps live in the root `package.json` as a default `catalog` plus named `catalogs` (`build`, `testing`). Consumers reference them as `catalog:` / `catalog:build` / `catalog:testing`. Both facts exist for the same reason — see "one React, or nothing renders" below.
 
 ## Commands
 
@@ -25,7 +25,7 @@ The workspace installs with the **isolated** linker (`bunfig.toml`), and the ver
 ```bash
 make setup                # bun install + toolchain preflight
 make supabase-up          # local Supabase stack (config at repo root, not in the example)
-make test                 # Rust suite + 172 UI tests
+make test                 # Rust suite + 65 hook/lib tests
 make check                # cargo fmt --check, clippy, tsc --noEmit
 make build                # bindings → UI kit → crate package check
 make pack                 # npm tarballs into dist-packages/ for inspection
@@ -38,8 +38,8 @@ Single test:
 
 ```bash
 cargo test --test auth_lifecycle sign_up_with_autoconfirm_signs_in   # one Rust test
-cd ui && bun x vitest run src/blocks/__tests__/otp-form.test.tsx     # one UI file
-cd ui && bun x vitest run -t "resumes"                               # by test name
+cd react && bun x vitest run src/hooks/__tests__/use-passkeys.test.ts  # one UI file
+cd react && bun x vitest run -t "resumes"                             # by test name
 ```
 
 The live-stack E2E is `#[ignore]`d and needs credentials: `make test:e2e` reads them from `supabase status`, so `make supabase-up` first.
@@ -101,11 +101,11 @@ Two owned subsystems worth knowing before touching them:
 
 Config (`src/config.rs`) deserializes leniently on purpose so `validate()` can name the offending field at startup rather than failing at first sign-in.
 
-### Frontend: bindings → hooks → blocks
+### Frontend: bindings → hooks
 
-`ui/` compiles under `noUncheckedIndexedAccess`, so an index or destructure of a possibly-empty collection is an error there. Where an invariant makes the access safe, encode it rather than asserting past it: `assertValidSteps` is an `asserts steps is NonEmptySteps` signature, which is what lets `useOnboardingFlow` index the step list without re-proving it is non-empty.
+`react/` compiles under `noUncheckedIndexedAccess`, so an index or destructure of a possibly-empty collection is an error there. Where an invariant makes the access safe, encode it rather than asserting past it: `assertValidSteps` is an `asserts steps is NonEmptySteps` signature, which is what lets `useOnboardingFlow` index the step list without re-proving it is non-empty.
 
-`guest-js/` wraps `invoke` with types and exposes `onAuthStateChange` (push events on `supabase-auth://auth-state-changed`, no polling). `ui/src/hooks/` consume the bindings; `ui/src/blocks/` are the drop-in components built on the hooks. User-facing error strings live in `ui/src/lib/error-messages.ts` — `src/error.rs` messages are developer-oriented.
+`guest-js/` wraps `invoke` with types and exposes `onAuthStateChange` (push events on `supabase-auth://auth-state-changed`, no polling). `react/src/hooks/` consume the bindings and are the whole published surface — the package renders nothing and ships no stylesheet, so consumers own every pixel (`examples/tauri-app` wires them to plain HTML + one hand-written stylesheet). User-facing error strings live in `react/src/lib/error-messages.ts` — `src/error.rs` messages are developer-oriented.
 
 ### Tests
 
@@ -113,11 +113,11 @@ Config (`src/config.rs`) deserializes leniently on purpose so `validate()` can n
 
 ## Things that will bite you
 
-- **One React, or nothing renders.** `@exegia/auth-ui` and the app rendering it must resolve the _same physical_ React. Two copies in one bundle means hooks read a null `ReactSharedInternals`, and every render dies on `TypeError: Cannot read properties of null (reading 'useMemo')` — which looks like a bug in the UI kit and is not. Two things keep it singular: the **isolated** linker in `bunfig.toml` (one entry per version in `node_modules/.bun`, symlinked into each package) and the root `catalog`, which stops the workspaces from drifting onto ranges that resolve differently. Verify with `readlink ui/node_modules/react examples/web-app/node_modules/react` — both must point at the same `.bun` entry.
+- **One React, or nothing renders.** `@exegia/auth-ui` and the app consuming it must resolve the _same physical_ React. Two copies in one bundle means hooks read a null `ReactSharedInternals`, and every render dies on `TypeError: Cannot read properties of null (reading 'useMemo')` — which looks like a bug in the UI kit and is not. Two things keep it singular: the **isolated** linker in `bunfig.toml` (one entry per version in `node_modules/.bun`, symlinked into each package) and the root `catalog`, which stops the workspaces from drifting onto ranges that resolve differently. Verify with `readlink react/node_modules/react examples/web-app/node_modules/react` — both must point at the same `.bun` entry.
 - **A stray lockfile inside a workspace package silently forks the dependency graph.** `examples/web-app/` was scaffolded by `bun init`, which left its own `bun.lock`; running `bun install` _inside_ that directory then produced a private `node_modules` with a real (non-symlinked) React that shadowed the workspace one. Only the repo root may hold a `bun.lock` — `find . -name bun.lock -not -path '*/node_modules/*'` should return exactly one path. Always install from the root.
-- **Isolated installs expose phantom dependencies, so "unrelated" builds can start failing after an install change.** Under the old hoisted layout `ui/` silently compiled with guest-js's TypeScript 5.9 even though it declares `^7.0.2`; once isolation handed it the TS 7 it actually asked for, `baseUrl` (removed in TS 7) and the untyped `import './styles.css'` both became hard errors. The fix is to make the package honest — declare what you use — not to re-hoist.
-- **`ui` tests need `guest-js/dist`.** The UI suite resolves `@exegia/plugin-supabase-auth` through the built bindings, so a fresh checkout fails until they're built. `make test:ui` handles the ordering; raw `vitest` does not.
-- **The two examples consume `@exegia/auth-ui` differently, and that is deliberate.** `examples/tauri-app/` compiles it from source, which costs it two things: ui's `__tests__` land in the app's program, and the app has to re-map ui's _private_ `@/` alias (`"@/*": ["../../ui/src/*"]`) into its own path space — where it collides with the app's own `@/`, so whichever entry is listed first silently wins. `examples/web-app/` maps `@exegia/auth-ui` to `../../ui/dist` instead and keeps `@/*` for itself; that is what a published consumer resolves, and `skipLibCheck` makes the declarations free. Restoring the source mapping there produces 164 errors, so don't. Two consequences: bun honours tsconfig `paths`, so the web example's **bundle** comes from `ui/dist` too (its make targets depend on `build-ui`, not just `build-bindings`), and a stale `ui/dist` is a stale app. Map the path at the _directory_, never at a bare `.d.ts` — tsc is happy either way but bun follows the mapping and fails with `No matching export`.
+- **Isolated installs expose phantom dependencies, so "unrelated" builds can start failing after an install change.** Under the old hoisted layout `react/` silently compiled with guest-js's TypeScript 5.9 even though it declares `^7.0.2`; once isolation handed it the TS 7 it actually asked for, `baseUrl` (removed in TS 7) and the untyped `import './styles.css'` both became hard errors (that import is gone now — the stylesheet went with the components). The fix is to make the package honest — declare what you use — not to re-hoist.
+- **`react` tests need `guest-js/dist`.** The hook suite resolves `@exegia/plugin-supabase-auth` through the built bindings, so a fresh checkout fails until they're built. `make test:ui` handles the ordering; raw `vitest` does not.
+- **The two examples consume `@exegia/auth-ui` differently, and that is deliberate.** `examples/tauri-app/` compiles it from source, which costs it two things: the package's `__tests__` land in the app's program, and the app has to re-map its _private_ `@/` alias (`"@/*": ["../../react/src/*"]`) into its own path space — where it collides with the app's own `@/`, so whichever entry is listed first silently wins. `examples/web-app/` maps `@exegia/auth-ui` to `../../react/dist` instead and keeps `@/*` for itself; that is what a published consumer resolves, and `skipLibCheck` makes the declarations free. Restoring the source mapping there produces 164 errors, so don't. Two consequences: bun honours tsconfig `paths`, so the web example's **bundle** comes from `ui/dist` too (its make targets depend on `build-ui`, not just `build-bindings`), and a stale `react/dist` is a stale app. Map the path at the _directory_, never at a bare `.d.ts` — tsc is happy either way but bun follows the mapping and fails with `No matching export`.
 - **`bun run --filter '*'` does not order by workspace dependency in bun 1.3.2** (the version `packageManager` pins and CI installs); 1.3.14 does. That made the root `build` script a race that passed locally and failed in CI with `TS2307: Cannot find module '@exegia/plugin-supabase-auth'`. The script now chains the three packages explicitly — keep it that way rather than relying on the bun version.
 - **`bun pm pack` does not apply `publishConfig` field overrides** (pnpm did). Packing `@exegia/auth-ui` naively yields a tarball whose `package.json` still points at `./src/index.ts`. `scripts/pack.sh` and `release.yml` both mirror the rewrite — don't bypass them.
 - **Escaped-colon Make targets** (`build\:ui`) work as target names but are silently ignored as _prerequisites_. Every rule is a plain name with the `area:thing` form as an alias; express dependencies between the plain names.
@@ -140,7 +140,7 @@ Only `dev` may target `next`; only `next` may target `main`. Releases are `workf
 
 **`release.yml` checks out `ref: main` and the dispatch runs `main`'s copy of the workflow.** So a release ships whatever is on `main`, not `dev` — promote `next → main` first, or you publish stale code under a new version. Two traps that follow from this: `main` lags the other branches by a lot, and until it catches up it still carries the pnpm-era workflow, whose `pnpm/action-setup@v4` is not in the org allowlist and fails at startup.
 
-Dry-run the release without publishing by running its steps in a scratch worktree (`git worktree add /tmp/x origin/next --detach`): `bun install --frozen-lockfile`, `bun run build`, the UI tests, the version bumps, then `bun publish --dry-run` in `guest-js/` and `ui/`. The dry run packs the tarball and then stops at `missing authentication` locally — that's expected, CI supplies `NODE_AUTH_TOKEN`.
+Dry-run the release without publishing by running its steps in a scratch worktree (`git worktree add /tmp/x origin/next --detach`): `bun install --frozen-lockfile`, `bun run build`, the UI tests, the version bumps, then `bun publish --dry-run` in `guest-js/` and `react/`. The dry run packs the tarball and then stops at `missing authentication` locally — that's expected, CI supplies `NODE_AUTH_TOKEN`.
 
 ### Known issue
 

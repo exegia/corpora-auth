@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "willow",
   "name": "Tauri Plugin Supabase Auth",
-  "description": "Supabase authentication for Tauri v2 desktop apps, with typed webview bindings and a React UI kit.",
+  "description": "Supabase authentication for Tauri v2 desktop apps, with typed webview bindings and React hooks.",
   "colors": {
     "primary": "#3514ef",
     "light": "#6354ff",
@@ -15,11 +15,16 @@
         "groups": [
           {
             "group": "Get started",
-            "pages": ["index", "quickstart"]
+            "pages": [
+              "index",
+              "quickstart"
+            ]
           },
           {
             "group": "Contributing",
-            "pages": ["contributing/commands"]
+            "pages": [
+              "contributing/commands"
+            ]
           }
         ]
       },
@@ -45,25 +50,22 @@
           },
           {
             "group": "Flows",
-            "pages": ["plugin/oauth", "plugin/passkeys"]
+            "pages": [
+              "plugin/oauth",
+              "plugin/passkeys"
+            ]
           }
         ]
       },
       {
-        "tab": "Components",
+        "tab": "React",
         "groups": [
           {
-            "group": "UI kit",
+            "group": "Hooks",
             "pages": [
               "components/overview",
-              "components/sign-in",
-              "components/sign-up",
-              "components/account"
+              "components/hooks"
             ]
-          },
-          {
-            "group": "Building blocks",
-            "pages": ["components/hooks", "components/primitives"]
           }
         ]
       }

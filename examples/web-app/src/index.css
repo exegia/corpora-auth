@@ -1,5 +1,4 @@
 @import "../styles/globals.css";
-@import "@exegia/auth-ui/styles.css";
 
 @layer base {
   :root {
@@ -9,6 +8,59 @@
   body {
     @apply grid place-items-center min-w-[320px] min-h-screen relative m-0 bg-background text-foreground;
   }
+}
+
+/*
+ * `@exegia/auth-ui` ships hooks only and carries no stylesheet, so the demo
+ * owns its own presentation. Deliberately plain — the interesting part is the
+ * hook wiring in App.tsx.
+ */
+.demo {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 320px;
+  padding: 24px;
+}
+
+.demo form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.demo input {
+  font: inherit;
+  color: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input);
+}
+
+.demo button {
+  font: inherit;
+  margin-top: 8px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.demo .muted {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.demo .alert {
+  border: 1px solid var(--destructive);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 
 /* cool Bun background animation 😎 */

@@ -64,7 +64,7 @@ jobs:
           VERSION: ${{ steps.train.outputs.version }}
         run: |
           set -euo pipefail
-          for pkg in guest-js ui; do
+          for pkg in guest-js react; do
             node -e '
               const fs = require("fs");
               const p = process.argv[1] + "/package.json";
@@ -80,7 +80,7 @@ jobs:
       # bun.lock pins each workspace member's own version (e.g. guest-js ->
       # "0.2.2"), and `bun publish` resolves `workspace:*` deps against that
       # pinned version, not the live package.json. Without this, publishing
-      # ui after the bump above ships a stale `@exegia/plugin-supabase-auth`
+      # the hooks package after the bump above ships a stale `@exegia/plugin-supabase-auth`
       # dependency version (confirmed: v0.5.0 shipped pinned to 0.2.2).
       # Verified locally: a plain `bun install` over an existing bun.lock
       # does NOT refresh a workspace member's pinned version (the

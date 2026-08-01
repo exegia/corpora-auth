@@ -60,7 +60,7 @@ While a round-trip is in flight, the plugin holds the loopback listener until th
 await cancelOAuthFlow();
 ```
 
-The pending `signInWithOAuth()` call rejects with `oauthFlowInterrupted`. `<SocialButtons />` and `<LinkedAccounts />` already wire this to a Cancel action.
+The pending `signInWithOAuth()` call rejects with `oauthFlowInterrupted`. `useIdentities()` exposes `cancelLink()` for the linking side; wire a Cancel action to it (and to `cancelOAuthFlow()` for sign-in) so a user is never stuck waiting on a browser tab they closed.
 
 ## Linking versus signing in
 

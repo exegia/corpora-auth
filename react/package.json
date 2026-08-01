@@ -1,0 +1,59 @@
+{
+  "name": "@exegia/auth-ui",
+  "version": "0.5.1",
+  "description": "React hooks for tauri-plugin-supabase-auth",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./hooks/*": "./src/hooks/*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@exegia/plugin-supabase-auth": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "catalog:testing",
+    "@testing-library/react": "catalog:testing",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:build",
+    "jsdom": "catalog:testing",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:build",
+    "vitest": "catalog:testing",
+    "vitest-axe": "catalog:testing",
+    "tsc-alias": "^1.9.1"
+  },
+  "license": "MIT OR Apache-2.0",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/exegia/corpora-auth.git",
+    "directory": "react"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  }
+}

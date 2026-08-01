@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { Accordion } from "@base-ui/react/accordion";
-import { ScrollArea } from "@base-ui/react/scroll-area";
-import { Separator } from "@base-ui/react/separator";
 import { invoke } from "@tauri-apps/api/core";
 import { resolveMessage } from "@exegia/auth-ui";
 import { buildReport, copyText, nextSteps, type Diagnostic } from "../lib/diagnostics";
@@ -40,27 +38,25 @@ export function ErrorReport({
   }
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="stack">
       {/*
         Headline uses the kit's user-facing copy; `diagnostic.message` is the
         plugin's developer-oriented text (often the raw GoTrue JSON body), so
         it belongs in the details below rather than at the top of the screen.
       */}
-      <div className="border-destructive/25 bg-destructive/10 flex flex-col gap-1 rounded-lg border p-3">
-        <p className="text-destructive text-sm font-semibold">
-          {diagnostic.method.title} failed
-        </p>
-        <p className="text-card-foreground text-sm">
+      <div className="alert stack-sm">
+        <strong>{diagnostic.method.title} failed</strong>
+        <span>
           {diagnostic.authError
             ? resolveMessage(diagnostic.authError)
             : diagnostic.message}
-        </p>
+        </span>
       </div>
 
       {hints.length > 0 ? (
-        <div className="bg-muted rounded-md p-3">
-          <p className="text-xs font-medium">Likely cause</p>
-          <ul className="text-muted-foreground mt-1 flex flex-col gap-1 text-xs">
+        <div className="note">
+          <p style={{ margin: "0 0 4px", fontWeight: 500 }}>Likely cause</p>
+          <ul className="muted" style={{ margin: 0, paddingLeft: 16 }}>
             {hints.map((hint) => (
               <li key={hint}>{hint}</li>
             ))}
@@ -68,18 +64,16 @@ export function ErrorReport({
         </div>
       ) : null}
 
-      <Separator className="bg-border h-px" />
+      <hr className="rule" />
 
-      <dl className="divide-border divide-y text-sm">
+      <dl>
         <Detail
           label="Kind"
           value={
             diagnostic.authError ? (
-              <code className="text-xs">{diagnostic.authError.kind}</code>
+              <code className="mono">{diagnostic.authError.kind}</code>
             ) : (
-              <span className="text-muted-foreground text-xs">
-                not a structured plugin error
-              </span>
+              <span className="muted small">not a structured plugin error</span>
             )
           }
         />
@@ -87,68 +81,55 @@ export function ErrorReport({
           <Detail label="Retry after" value={`${diagnostic.authError.retryAfterSecs}s`} />
         ) : null}
         <Detail label="When" value={diagnostic.at.toLocaleTimeString()} />
-        <Detail label="Window" value={<code className="text-xs">auth-{diagnostic.method.id}</code>} />
+        <Detail
+          label="Window"
+          value={<code className="mono">auth-{diagnostic.method.id}</code>}
+        />
       </dl>
 
-      <div className="flex flex-col gap-1">
-        <p className="text-muted-foreground text-xs">Raw message from the plugin</p>
-        <p className="bg-muted rounded-md p-2 font-mono text-[11px] break-words">
-          {diagnostic.message}
+      <div className="stack-sm">
+        <p className="small muted" style={{ margin: 0 }}>
+          Raw message from the plugin
         </p>
+        <pre className="mono">{diagnostic.message}</pre>
       </div>
 
-      <Accordion.Root className="flex flex-col">
-        <Accordion.Item className="border-b">
-          <Accordion.Header>
-            <Accordion.Trigger className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between py-2 text-xs font-medium">
+      <Accordion.Root>
+        <Accordion.Item>
+          <Accordion.Header style={{ margin: 0 }}>
+            <Accordion.Trigger
+              className="link"
+              style={{ width: "100%", textAlign: "left" }}
+            >
               Full report (what gets copied)
             </Accordion.Trigger>
           </Accordion.Header>
-          <Accordion.Panel className="overflow-hidden">
-            <ScrollArea.Root className="max-h-56">
-              <ScrollArea.Viewport className="bg-muted max-h-56 rounded-md p-2">
-                <pre className="whitespace-pre-wrap text-[11px] leading-relaxed">{report}</pre>
-              </ScrollArea.Viewport>
-              <ScrollArea.Scrollbar className="bg-border/50 w-1.5 rounded" orientation="vertical">
-                <ScrollArea.Thumb className="bg-muted-foreground/40 rounded" />
-              </ScrollArea.Scrollbar>
-            </ScrollArea.Root>
+          <Accordion.Panel>
+            <pre className="mono">{report}</pre>
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion.Root>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <button
-            className="bg-secondary text-secondary-foreground h-9 flex-1 rounded-md text-sm font-medium"
-            onClick={() => void copy()}
-            type="button"
-          >
+      <div className="stack-sm">
+        <div className="row">
+          <button className="grow" onClick={() => void copy()} type="button">
             {copied === "ok" ? "Copied ✓" : "Copy report"}
           </button>
-          <button
-            className="bg-secondary text-secondary-foreground h-9 flex-1 rounded-md text-sm font-medium"
-            onClick={() => void copyAndOpenClaude()}
-            type="button"
-          >
-            Copy & open Claude
+          <button className="grow" onClick={() => void copyAndOpenClaude()} type="button">
+            Copy &amp; open Claude
           </button>
         </div>
         {copied === "fail" ? (
-          <p className="text-destructive text-xs">
+          <p className="field-error">
             Could not reach the clipboard. Select the report above and copy manually.
           </p>
         ) : null}
         {copied === "ok" ? (
-          <p className="text-muted-foreground text-xs">
+          <p className="small muted">
             On the clipboard — paste it into a new conversation.
           </p>
         ) : null}
-        <button
-          className="bg-primary text-primary-foreground h-9 rounded-md text-sm font-medium"
-          onClick={onDismiss}
-          type="button"
-        >
+        <button className="primary" onClick={onDismiss} type="button">
           Close and go back
         </button>
       </div>
@@ -158,9 +139,9 @@ export function ErrorReport({
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-1.5">
-      <dt className="text-muted-foreground shrink-0 text-xs">{label}</dt>
-      <dd className="min-w-0 truncate text-right">{value}</dd>
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }

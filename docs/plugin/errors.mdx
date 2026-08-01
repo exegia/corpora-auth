@@ -90,4 +90,4 @@ The one exception is the OS credential prompt during a passkey ceremony: no netw
 Two flows report user cancellation as a status rather than a rejection:
 
 - `signInWithPasskey()` and `registerPasskey()` resolve with `{ status: "cancelled" }` when the OS prompt is dismissed.
-- `cancelOAuthFlow()` aborts a browser round-trip; the pending `signInWithOAuth()` call rejects with `oauthFlowInterrupted`, which the UI kit treats as a return to idle rather than a failure.
+- `cancelOAuthFlow()` aborts a browser round-trip; the pending `signInWithOAuth()` call rejects with `oauthFlowInterrupted`, which is a return to idle rather than a failure — treat it as such in your UI.

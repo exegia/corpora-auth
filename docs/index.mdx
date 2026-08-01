@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "Supabase authentication for Tauri v2 desktop apps: a Rust plugin, typed webview bindings, and a React UI kit shipped from one lockstep version."
+description: "Supabase authentication for Tauri v2 desktop apps: a Rust plugin, typed webview bindings, and React hooks shipped from one lockstep version."
 ---
 
 <img src="/images/banner.png" alt="Introduction banner" width="100%" />
@@ -13,7 +13,7 @@ Desktop authentication has a few problems the web does not: token storage that i
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `tauri-plugin-supabase-auth`   | The Rust plugin. Owns the session, the keychain, the OAuth loopback, and the refresh task                         |
 | `@exegia/plugin-supabase-auth` | Typed webview bindings over `invoke`, plus push auth-state events                                                 |
-| `@exegia/auth-ui`              | React blocks and hooks built on the bindings: sign-in, sign-up, OTP, recovery, social, passkeys, account settings |
+| `@exegia/auth-ui`              | React hooks built on the bindings: session, auth actions, onboarding, identities, passkeys |
 
 All three are versioned in lockstep from one repository.
 
@@ -45,8 +45,8 @@ All three are versioned in lockstep from one repository.
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Install, configure, and sign someone in.
   </Card>
-  <Card title="Components" icon="layout-dashboard" href="/components/overview">
-    The UI kit blocks, with previews captured from a running app.
+  <Card title="React hooks" icon="anchor" href="/components/overview">
+    Session state and never-throwing auth actions, with no UI of their own.
   </Card>
   <Card title="JavaScript API" icon="code" href="/plugin/javascript-api">
     Every binding, and the structured error type behind each rejection.

@@ -74,7 +74,7 @@ Change `oauth.callbackPorts` in `tauri.conf.json` and this list has to change wi
 enable_manual_linking = true
 ```
 
-Off by default. Without it, `<LinkedAccounts />` can list identities but cannot attach one.
+Off by default. Without it, `useIdentities()` can list identities but `link()` fails with a `configuration` error.
 
 ## Passkeys
 

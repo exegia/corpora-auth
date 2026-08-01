@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.png" width="900" alt="tauri-plugin-supabase-auth — complete Supabase authentication for Tauri v2 desktop apps, plus a ready-made React UI kit">
+<img src="assets/banner.png" width="900" alt="tauri-plugin-supabase-auth — complete Supabase authentication for Tauri v2 desktop apps, plus React hooks for the frontend">
 
 ---
 
@@ -11,7 +11,7 @@
 
 Email/password &nbsp;·&nbsp; Magic links & one-time codes &nbsp;·&nbsp; OAuth via system browser (PKCE) &nbsp;·&nbsp; Passkeys &nbsp;·&nbsp; Password recovery &nbsp;·&nbsp; Persistent auto-refreshing sessions &nbsp;·&nbsp; OS-keychain storage
 
-**[Documentation](./docs)** &nbsp;·&nbsp; [Quickstart](./docs/quickstart.mdx) &nbsp;·&nbsp; [UI kit](./docs/components/overview.mdx) &nbsp;·&nbsp; [JavaScript API](./docs/plugin/javascript-api.mdx)
+**[Documentation](./docs)** &nbsp;·&nbsp; [Quickstart](./docs/quickstart.mdx) &nbsp;·&nbsp; [React hooks](./docs/components/hooks.mdx) &nbsp;·&nbsp; [JavaScript API](./docs/plugin/javascript-api.mdx)
 
 </div>
 
@@ -25,7 +25,7 @@ Desktop auth is fiddly: token storage that isn't a plain-text JSON file, OAuth r
 | ------------------------ | -------------------------------------------------------------------------------------- |
 | 🦀 **Rust side**         | `app.supabase_auth().sign_in_with_password(..)`, full sessions, state-change callbacks |
 | 🌐 **Frontend side**     | `@exegia/plugin-supabase-auth` typed bindings + push events (no polling)               |
-| 🎨 **UI kit**            | `@exegia/auth-ui` — coss ui blocks: sign-in, sign-up, OTP, recovery, social, passkeys  |
+| 🪝 **React hooks**       | `@exegia/auth-ui` — session, auth actions, onboarding, identities, passkeys            |
 | 🔑 **Secure by default** | Sessions in the OS keychain; the webview **never sees the refresh token**              |
 | 🛡️ **Permission model**  | Safe default command set; account mutations are explicit opt-ins                       |
 | 🧪 **Tested**            | Rust contract tests, UI tests including accessibility, live-stack E2E in CI            |
@@ -58,7 +58,7 @@ The npm packages live on GitHub Packages, so point the `@exegia` scope there:
 
 ```bash
 bun add @exegia/plugin-supabase-auth
-bun add @exegia/auth-ui        # optional: the UI kit
+bun add @exegia/auth-ui        # optional: the React hooks
 ```
 
 **3. Your Supabase project**
@@ -93,16 +93,21 @@ That's the minimum — persistence, refresh timing and OAuth ports all have defa
 **5. Sign someone in**
 
 ```tsx
-import { SignInForm, useSession } from "@exegia/auth-ui";
-import "@exegia/auth-ui/styles.css";
+import { useAuth, useSession } from "@exegia/auth-ui";
 
 export default function App() {
   const { status, user } = useSession();
+  const auth = useAuth();
 
   if (status === "loading") return <p>Restoring session…</p>;
   if (status === "signedIn") return <p>Hello {user?.email} 👋</p>;
 
-  return <SignInForm showSocial={["github", "google"]} />;
+  // The hooks are headless — the markup is entirely yours.
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); void auth.signIn({ email, password }); }}>
+      {/* your fields */}
+    </form>
+  );
 }
 ```
 
@@ -131,26 +136,22 @@ let session = auth.sign_in_with_password("a@b.co", "hunter22").await?;
 auth.on_auth_state_change(|payload| println!("auth: {:?}", payload.event));
 ```
 
-## 🎨 The UI kit
+## 🪝 The React hooks
 
-Drop-in React blocks built on hooks that talk to the plugin directly — no provider to mount. Every block validates with zod before the first network call, renders explicit loading/success/error states, is keyboard- and screen-reader-operable (axe-tested), and lets you override any user-facing string.
+`@exegia/auth-ui` is headless: it ships state and never-throwing actions, no components and no stylesheet. Every hook talks to the plugin directly — there is no provider to mount.
 
-Every screenshot is the real block, captured from `examples/tauri-app` against a local Supabase — cropped to the block, no mockups.
+| Hook | What it gives you |
+| --- | --- |
+| `useSession()` | `{ session, user, status }`, driven by push events — no polling |
+| `useAuth()` | `signIn`, `signUp`, `signOut`, `signInWithOtp`, `verifyOtp`, `signInWithOAuth`, `resetPassword`, `updateUser` — each resolving to `{ ok: true, data } \| { ok: false, error }` |
+| `useOnboarding(steps?)` | Whether the signed-in user still owes you a profile, and which step is next |
+| `useOnboardingFlow(config)` | The whole sign-up → confirmation → profile-steps state machine |
+| `useIdentities()` | Connected sign-in identities, plus `link` / `unlink` / `cancelLink` |
+| `usePasskeys()` | Device capability, the account's passkeys, and register / rename / delete / sign-in |
 
-|                                                                                                                                                  |                                                                                                                                                                             |                                                                                                                                                      |
-| :----------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: |
-| <img src="assets/blocks/sign-in-form.png" width="260" alt="SignInForm: email and password fields, a forgot-password link, and a Sign in button"> |              <img src="assets/blocks/sign-up-form.png" width="260" alt="SignUpForm: email, password and confirm-password fields with a Create account button">              |    <img src="assets/blocks/otp-form.png" width="260" alt="OtpForm second step: a segmented six-box one-time-code field and a Verify code button">    |
-|                                           [`<SignInForm />`](./docs/components/sign-in.mdx#signinform)                                           |                                                        [`<SignUpForm />`](./docs/components/sign-up.mdx#signupform)                                                         |                                                [`<OtpForm />`](./docs/components/sign-in.mdx#otpform)                                                |
-|       <img src="assets/blocks/social-buttons.png" width="260" alt="SocialButtons: Continue with Google and Continue with GitHub buttons">        |                            <img src="assets/blocks/passkey-sign-in.png" width="260" alt="PasskeySignIn: a single Sign in with a passkey button">                            |         <img src="assets/blocks/onboarding-flow.png" width="260" alt="OnboardingFlow: a two-step progress list above the credentials step">          |
-|                                        [`<SocialButtons />`](./docs/components/sign-in.mdx#socialbuttons)                                        |                                                     [`<PasskeySignIn />`](./docs/components/sign-in.mdx#passkeysignin)                                                      |                                         [`<OnboardingFlow />`](./docs/components/sign-up.mdx#onboardingflow)                                         |
-|     <img src="assets/blocks/forgot-password-form.png" width="260" alt="ForgotPasswordForm: an email field and a Send recovery code button">      | <img src="assets/blocks/linked-accounts.png" width="260" alt="LinkedAccounts: the email identity with a Disconnect action, plus Connect GitHub and Connect Google buttons"> | <img src="assets/blocks/passkey-manager.png" width="260" alt="PasskeyManager empty state: no passkeys registered yet, with an Add a passkey button"> |
-|                                   [`<ForgotPasswordForm />`](./docs/components/account.mdx#forgotpasswordform)                                   |                                                    [`<LinkedAccounts />`](./docs/components/account.mdx#linkedaccounts)                                                     |                                         [`<PasskeyManager />`](./docs/components/account.mdx#passkeymanager)                                         |
+`resolveMessage(error)` turns a structured `AuthError` into user-facing copy, and the zod schemas behind the onboarding config are exported for app-level reuse. Full reference: **[hooks documentation](./docs/components/hooks.mdx)**.
 
-Also `<UpdatePasswordForm />`, the hooks the blocks are built on (`useSession`, `useAuth`, `useIdentities`, `usePasskeys`, the onboarding pair), and the coss primitives underneath. Props, permissions and behaviour for all of it: **[UI kit documentation](./docs/components/overview.mdx)**.
-
-**The design language:** pill geometry throughout, self-hosted Cal Sans 2.0 scoped to `[data-slot="auth-block"]`, inline provider brand marks, and spring motion on the [transitions.dev](https://transitions.dev) token scale — all behind `prefers-reduced-motion`. The kit ships no colours of its own; swapping the shadcn-style surface tokens re-skins every block at once.
-
-> **Consuming the kit from your own Tailwind app?** Add `@source "../node_modules/@exegia/auth-ui/dist";` next to the `@import`, or utilities used only inside the kit are never generated.
+Pre-built auth UI lives in [`@exegia/corpora-ui`](https://github.com/exegia/corpora-ui) — presentational blocks you drive with callbacks, designed to pair with these hooks. `examples/tauri-app` deliberately uses neither: it wires the hooks to plain HTML and CSS, so what you read is the auth flow and nothing else.
 
 ## 📚 Documentation
 
@@ -212,7 +213,7 @@ make check                # cargo fmt --check, clippy, tsc --noEmit
 
 | Target                                                     | What it does                                                                |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `make build`                                               | Every publishable artifact: bindings → UI kit → crate package check         |
+| `make build`                                               | Every publishable artifact: bindings → hooks → crate package check         |
 | `make build:bindings` / `build:ui`                         | The two npm packages (`@exegia/plugin-supabase-auth`, `@exegia/auth-ui`)    |
 | `make build:plugin`                                        | `cargo publish --dry-run` + a report of what ships in the crate tarball     |
 | `make pack`                                                | npm tarballs into `dist-packages/` so you can inspect them before a release |

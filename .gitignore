@@ -22,6 +22,9 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+react/dist/
+react/node_modules/
+supabase/
 
 # Local npm tarballs from `make pack`
 dist-packages/
