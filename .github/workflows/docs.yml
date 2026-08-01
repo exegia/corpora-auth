@@ -10,15 +10,15 @@ name: Docs
 #
 # What this workflow adds is a pre-flight gate. Mintlify's own broken-link CI
 # check requires a Pro/Enterprise plan and only runs on PRs targeting the deploy
-# branch. Our flow is doc/* -> dev -> next -> main, so a broken link would
-# otherwise surface three merges after the change that caused it.
+# branch. Our flow is docs/* -> release/vX.Y.Z -> main, so a broken link would
+# otherwise surface two merges after the change that caused it.
 on:
   pull_request:
     paths:
       - docs/**
       - .github/workflows/docs.yml
   push:
-    branches: [main, next, dev]
+    branches: [main]
     paths:
       - docs/**
       - .github/workflows/docs.yml

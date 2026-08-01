@@ -1,4 +1,4 @@
-# @exegia/auth-ui
+# @exegia/use-auth
 
 React hooks for `tauri-plugin-supabase-auth`. The package is headless: it
 ships state and actions, no components and no stylesheet — the UI is yours.
@@ -12,14 +12,14 @@ import {
   useIdentities,
   usePasskeys,
   resolveMessage,
-} from "@exegia/auth-ui";
+} from "@exegia/use-auth";
 ```
 
 Requires the plugin to be installed and `supabase-auth:default` granted in
 your capabilities, plus the opt-in permissions listed below for account
 mutations (see the [root README](../README.md#permissions)).
 
-> Looking for pre-built auth UI? The rendered blocks that used to live here
+> Looking for a pre-built auth UI? The rendered blocks that used to live here
 > now ship from [`@exegia/corpora-ui`](https://github.com/exegia/corpora-ui)
 > as presentational components you drive with callbacks — pair them with
 > these hooks.
@@ -33,7 +33,7 @@ the plugin's `onAuthStateChange` events, no polling.
 
 ### `useAuth()`
 
-Stable async actions that **never throw**; every one resolves to
+Stable async actions that **never throw**; everyone resolves to
 `{ ok: true, data } | { ok: false, error: AuthError }`.
 
 `signIn`, `signUp`, `signOut`, `signInWithOtp`, `verifyOtp`,
@@ -138,11 +138,11 @@ that matters to you.
 `supabase-auth:default` covers the sign-in lifecycle. Account mutations are
 opt-in per command:
 
-| What you call | Permission |
-| --- | --- |
-| `useAuth().updateUser` (incl. onboarding profile writes) | `supabase-auth:allow-update-user` |
-| `useIdentities()` | `allow-get-identities`, `allow-link-identity`, `allow-unlink-identity` |
-| `usePasskeys()` | `allow-register-passkey`, `allow-list-passkeys`, `allow-rename-passkey`, `allow-delete-passkey`, `allow-get-passkey-capability` |
+| What you call                                            | Permission                                                                                                                      |
+|----------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `useAuth().updateUser` (incl. onboarding profile writes) | `supabase-auth:allow-update-user`                                                                                               |
+| `useIdentities()`                                        | `allow-get-identities`, `allow-link-identity`, `allow-unlink-identity`                                                          |
+| `usePasskeys()`                                          | `allow-register-passkey`, `allow-list-passkeys`, `allow-rename-passkey`, `allow-delete-passkey`, `allow-get-passkey-capability` |
 
 ```json
 { "permissions": ["supabase-auth:default", "supabase-auth:allow-update-user"] }
@@ -159,5 +159,5 @@ Supabase project to have manual linking enabled, or link/unlink fail with a
 ## Tests
 
 ```bash
-bun run --filter @exegia/auth-ui test
+bun run --filter @exegia/use-auth test
 ```

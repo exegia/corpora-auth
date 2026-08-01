@@ -1,0 +1,53 @@
+# A feature PR landed on a release branch. Clean up after it and keep the
+# release's draft PR into main up to date.
+#
+# Runs as the automation GitHub App rather than GITHUB_TOKEN: a PR opened with
+# GITHUB_TOKEN cannot trigger further workflows, so the release PR's own checks
+# would never start.
+name: PR merged
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - "release/v*"
+
+# Two features merging at once must not both rewrite the release PR body.
+concurrency:
+  group: release-pr-${{ github.base_ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  wrapup:
+    name: wrapup
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+
+      # Full history: the release notes are a `git log main..release/vX.Y.Z`.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Delete the merged branch
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.head_ref }}
+        run: make release-delete
+
+      - name: Open or refresh the release PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.base_ref }}
+        run: make release-pr

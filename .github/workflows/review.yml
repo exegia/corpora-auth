@@ -1,0 +1,71 @@
+# A light AI review on feature PRs into a release branch.
+#
+# Deliberately its own file rather than a job in pr.yml. The org-level
+# allowed-actions policy on `exegia` is `selected`: GitHub-owned actions,
+# verified creators, and four explicit patterns
+# (`gh api /orgs/exegia/actions/permissions/selected-actions`).
+# `anthropics/claude-code-action` is on none of those lists, and a single
+# disallowed action fails the *whole workflow file* at startup — no jobs, no
+# logs, no annotations. Kept in pr.yml, an unverified action here would take
+# `guard`, `check` and `package` down with it. On its own, the blast radius is
+# a review nobody is blocked on.
+#
+# If this workflow shows a startup failure, that is the cause: add
+# `anthropics/claude-code-action@*` to the org allowlist (needs `admin:org`) or
+# delete this file.
+name: Review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches:
+      - "release/v*"
+
+concurrency:
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: review
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write # the review is posted through the issue-comments API
+      actions: write # lets the review read this PR's CI results
+      id-token: write
+    env:
+      # The `secrets` context cannot be referenced from an `if:` — GitHub rejects
+      # the whole file with "Unrecognized named-value: 'secrets'". Mapping it to a
+      # job-level env var makes it reachable from a step-level `if:`. Only
+      # emptiness is ever tested; the value is never printed.
+      CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # A permanently-red check that means "unconfigured" is worse than no
+      # check — it trains everyone to merge past red. Skip loudly instead.
+      - name: Note that review is unconfigured
+        if: ${{ env.CLAUDE_TOKEN == '' }}
+        run: |
+          {
+            echo "### Review skipped"
+            echo
+            echo "\`CLAUDE_CODE_OAUTH_TOKEN\` is not set for this repository."
+            echo "It is an organization secret on \`exegia\` — check it is visible here."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Light AI review
+        if: ${{ env.CLAUDE_TOKEN != '' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+          plugins: "code-review@claude-code-plugins"
+          prompt: "/code-review:code-review --comment https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
+          allowed_bots: "*"

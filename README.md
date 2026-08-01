@@ -4,7 +4,7 @@
 
 ---
 
-[![CI](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/exegia/corpora-auth/actions/workflows/ci.yml)
+[![Release](https://github.com/exegia/corpora-auth/actions/workflows/release.yml/badge.svg)](https://github.com/exegia/corpora-auth/actions/workflows/release.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#-license)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri&logoColor=white)](https://v2.tauri.app)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/docs/guides/auth)
@@ -25,7 +25,7 @@ Desktop auth is fiddly: token storage that isn't a plain-text JSON file, OAuth r
 | ------------------------ | -------------------------------------------------------------------------------------- |
 | 🦀 **Rust side**         | `app.supabase_auth().sign_in_with_password(..)`, full sessions, state-change callbacks |
 | 🌐 **Frontend side**     | `@exegia/plugin-supabase-auth` typed bindings + push events (no polling)               |
-| 🪝 **React hooks**       | `@exegia/auth-ui` — session, auth actions, onboarding, identities, passkeys            |
+| 🪝 **React hooks**       | `@exegia/use-auth` — session, auth actions, onboarding, identities, passkeys            |
 | 🔑 **Secure by default** | Sessions in the OS keychain; the webview **never sees the refresh token**              |
 | 🛡️ **Permission model**  | Safe default command set; account mutations are explicit opt-ins                       |
 | 🧪 **Tested**            | Rust contract tests, UI tests including accessibility, live-stack E2E in CI            |
@@ -48,7 +48,13 @@ tauri::Builder::default()
 
 **2. The frontend packages**
 
-The npm packages live on GitHub Packages, so point the `@exegia` scope there:
+`@exegia/use-auth` (the React hooks) is published to the public npm registry and installs with no extra configuration:
+
+```bash
+bun add @exegia/use-auth
+```
+
+The bindings package lives on GitHub Packages, so installing it directly needs the `@exegia` scope pointed there:
 
 ```ini
 # .npmrc (project root)
@@ -58,8 +64,9 @@ The npm packages live on GitHub Packages, so point the `@exegia` scope there:
 
 ```bash
 bun add @exegia/plugin-supabase-auth
-bun add @exegia/auth-ui        # optional: the React hooks
 ```
+
+Note the scope mapping routes _every_ `@exegia` package through GitHub Packages, including `@exegia/use-auth` — so add the hooks package (and let the lockfile pin its npmjs URL) before adding the mapping.
 
 **3. Your Supabase project**
 
@@ -93,7 +100,7 @@ That's the minimum — persistence, refresh timing and OAuth ports all have defa
 **5. Sign someone in**
 
 ```tsx
-import { useAuth, useSession } from "@exegia/auth-ui";
+import { useAuth, useSession } from "@exegia/use-auth";
 
 export default function App() {
   const { status, user } = useSession();
@@ -138,7 +145,7 @@ auth.on_auth_state_change(|payload| println!("auth: {:?}", payload.event));
 
 ## 🪝 The React hooks
 
-`@exegia/auth-ui` is headless: it ships state and never-throwing actions, no components and no stylesheet. Every hook talks to the plugin directly — there is no provider to mount.
+`@exegia/use-auth` is headless: it ships state and never-throwing actions, no components and no stylesheet. Every hook talks to the plugin directly — there is no provider to mount.
 
 | Hook | What it gives you |
 | --- | --- |
@@ -214,7 +221,7 @@ make check                # cargo fmt --check, clippy, tsc --noEmit
 | Target                                                     | What it does                                                                |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------- |
 | `make build`                                               | Every publishable artifact: bindings → hooks → crate package check         |
-| `make build:bindings` / `build:ui`                         | The two npm packages (`@exegia/plugin-supabase-auth`, `@exegia/auth-ui`)    |
+| `make build:bindings` / `build:ui`                         | The two npm packages (`@exegia/plugin-supabase-auth`, `@exegia/use-auth`)    |
 | `make build:plugin`                                        | `cargo publish --dry-run` + a report of what ships in the crate tarball     |
 | `make pack`                                                | npm tarballs into `dist-packages/` so you can inspect them before a release |
 | `make test:rust` / `test:ui` / `test:e2e` / `test:example` | One suite at a time                                                         |
@@ -222,7 +229,7 @@ make check                # cargo fmt --check, clippy, tsc --noEmit
 
 `test:ui` builds the bindings first — the UI suite resolves `@exegia/plugin-supabase-auth` through `guest-js/dist`, so it fails on a fresh checkout without that step.
 
-Publishing stays in [`.github/workflows/release.yml`](./.github/workflows/release.yml), which bumps all three versions in lockstep and pushes both npm packages to GitHub Packages. The `build:*` targets only verify that a release would work.
+Publishing stays in [`.github/workflows/release.yml`](./.github/workflows/release.yml), which runs when a `release/vX.Y.Z` PR merges into `main`: it publishes the crate to crates.io, `@exegia/plugin-supabase-auth` to GitHub Packages and `@exegia/use-auth` to the public npm registry, all at the one version the branch carries, then tags and cuts the next release branch. See [`.github/WORKFLOW.md`](./.github/WORKFLOW.md). The `build:*` and `pack` targets only verify that a release would work.
 
 The example app has its own task runner: `make -C examples/tauri-app help`. Design docs (spec, plan, research, contracts) live in [`specs/`](./specs).
 

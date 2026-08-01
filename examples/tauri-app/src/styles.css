@@ -1,7 +1,7 @@
 /*
  * Plain CSS for the example app — no Tailwind, no component kit.
  *
- * `@exegia/auth-ui` ships hooks only: it renders nothing and carries no
+ * `@exegia/use-auth` ships hooks only: it renders nothing and carries no
  * stylesheet, so every pixel here belongs to the example. The point of this
  * file is to stay boring enough that the auth wiring in `src/windows/` is the
  * only thing worth reading.

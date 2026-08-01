@@ -37,30 +37,40 @@ tauri::Builder::default()
 
 ## The frontend packages
 
-Both npm packages are published to GitHub Packages under the `@exegia` scope, so the scope has to be pointed at that registry.
+`@exegia/use-auth` is published to the public npm registry and installs with no extra configuration:
+
+<CodeGroup>
+
+```bash bun
+bun add @exegia/use-auth
+```
+
+```bash npm
+npm install @exegia/use-auth
+```
+
+</CodeGroup>
+
+The bindings package is published to GitHub Packages, so installing it directly requires the `@exegia` scope pointed at that registry. Any token with `read:packages` works. Because the scope mapping routes every `@exegia` package through GitHub Packages, add `@exegia/use-auth` first so the lockfile pins its npmjs URL.
 
 ```ini .npmrc
 @exegia:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-Any token with `read:packages` works.
-
 <CodeGroup>
 
 ```bash bun
 bun add @exegia/plugin-supabase-auth
-bun add @exegia/auth-ui
 ```
 
 ```bash npm
 npm install @exegia/plugin-supabase-auth
-npm install @exegia/auth-ui
 ```
 
 </CodeGroup>
 
-`@exegia/auth-ui` declares `react` and `react-dom` 19 as peer dependencies and depends on the bindings package, so installing the hooks pulls the bindings in with it. It ships no stylesheet and no components — nothing to import besides the hooks themselves.
+`@exegia/use-auth` declares `react` and `react-dom` 19 as peer dependencies and depends on the bindings package, so installing the hooks pulls the bindings in with it. It ships no stylesheet and no components — nothing to import besides the hooks themselves.
 
 ## Next
 

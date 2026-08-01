@@ -5,7 +5,7 @@ import {
   useOnboardingFlow,
   type FieldConfig,
   type OnboardingCompletion,
-} from "@exegia/auth-ui";
+} from "@exegia/use-auth";
 
 /**
  * Sign-up plus the onboarding steps that follow it, driven entirely by

@@ -11,7 +11,7 @@
 }
 
 /*
- * `@exegia/auth-ui` ships hooks only and carries no stylesheet, so the demo
+ * `@exegia/use-auth` ships hooks only and carries no stylesheet, so the demo
  * owns its own presentation. Deliberately plain — the interesting part is the
  * hook wiring in App.tsx.
  */
@@ -83,15 +83,6 @@ body::before {
   }
   to {
     background-position: 256px 224px;
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0);
-  }
-  to {
-    transform: rotate(360deg);
   }
 }
 
