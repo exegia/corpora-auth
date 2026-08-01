@@ -37,7 +37,7 @@ Both npm packages live on GitHub Packages, so point the `@exegia` scope there:
 
 ```bash
 bun add @exegia/plugin-supabase-auth
-bun add @exegia/auth-ui        # optional: the UI kit
+bun add @exegia/auth-ui        # optional: the React hooks
 ```
 
 </Step>
@@ -77,23 +77,28 @@ Everything else has defaults — see [Configuration](/plugin/configuration).
 
 <Step title="Sign someone in">
 
-The fastest path is a UI kit block:
+The fastest path from React is the hooks — headless, so the markup is yours:
 
 ```tsx
-import { SignInForm, useSession } from "@exegia/auth-ui";
-import "@exegia/auth-ui/styles.css";
+import { useAuth, useSession } from "@exegia/auth-ui";
 
 export default function App() {
   const { status, user } = useSession();
+  const auth = useAuth();
 
   if (status === "loading") return <p>Restoring session…</p>;
   if (status === "signedIn") return <p>Signed in as {user?.email}</p>;
 
   return (
-    <SignInForm
-      showSocial={["github", "google"]}
-      onForgotPassword={() => setScreen("recover")}
-    />
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
+        const result = await auth.signIn({ email, password });
+        if (!result.ok) setError(resolveMessage(result.error));
+      }}
+    >
+      {/* your fields */}
+    </form>
   );
 }
 ```

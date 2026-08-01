@@ -83,7 +83,7 @@ doctor: ## Diagnose the toolchain, Supabase stack and ports
 # `test:ui` relies on.
 #
 # The web example goes one step further: its tsconfig maps @exegia/auth-ui to
-# ui/dist (see the comment there), and bun honours tsconfig paths, so it needs
+# react/dist (see the comment there), and bun honours tsconfig paths, so it needs
 # the built UI kit rather than just the bindings. `build-ui` already depends on
 # `build-bindings`.
 
@@ -124,7 +124,7 @@ build\:bindings: build-bindings ## Build @exegia/plugin-supabase-auth (tsup, esm
 build-bindings:
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_BINDINGS)' build
 
-build\:ui: build-ui ## Build @exegia/auth-ui into ui/dist (needs the bindings' dist)
+build\:ui: build-ui ## Build @exegia/auth-ui into react/dist (needs the bindings' dist)
 build-ui: build-bindings
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' build
 
@@ -213,7 +213,7 @@ typecheck\:tauri: typecheck-tauri ## tsc --noEmit for the Tauri example
 typecheck-tauri:
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" typecheck
 
-# Resolves @exegia/auth-ui through ui/dist, so the UI kit has to be built first.
+# Resolves @exegia/auth-ui through react/dist, so the package has to be built first.
 typecheck\:web: typecheck-web ## tsc --noEmit for the web example
 typecheck-web: build-ui
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_WEB)' typecheck

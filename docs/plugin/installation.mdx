@@ -3,7 +3,7 @@ title: "Installation"
 description: "Add the Rust plugin to a Tauri v2 app and install the typed webview bindings."
 ---
 
-The plugin has three installable pieces. The Rust crate is required; the bindings are required if the webview needs to authenticate; the UI kit is optional.
+The plugin has three installable pieces. The Rust crate is required; the bindings are required if the webview needs to authenticate; the React hooks are optional.
 
 ## Requirements
 
@@ -60,18 +60,7 @@ npm install @exegia/auth-ui
 
 </CodeGroup>
 
-`@exegia/auth-ui` declares `react` and `react-dom` 19 as peer dependencies and depends on the bindings package, so installing the kit pulls the bindings in with it.
-
-## Tailwind consumers
-
-The UI kit ships compiled JavaScript with Tailwind class names as string literals. Tailwind only scans your own sources, so utilities used exclusively inside the kit are never generated and those rules silently do nothing. Add the package as a source next to your `@import`:
-
-```css
-@import "tailwindcss";
-@source "../node_modules/@exegia/auth-ui/dist";
-```
-
-Use `dist`, not `src` — `dist` is what the published package ships.
+`@exegia/auth-ui` declares `react` and `react-dom` 19 as peer dependencies and depends on the bindings package, so installing the hooks pulls the bindings in with it. It ships no stylesheet and no components — nothing to import besides the hooks themselves.
 
 ## Next
 
