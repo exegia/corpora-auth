@@ -54,7 +54,7 @@ jobs:
       # apply publishConfig field overrides (main/types/exports), which the
       # ui package relies on to point consumers at dist/ instead of src/.
       - name: Apply publishConfig field overrides
-        working-directory: ui
+        working-directory: react
         run: |
           node -e '
             const fs = require("fs");
@@ -82,7 +82,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish @exegia/auth-ui
-        working-directory: ui
+        working-directory: react
         run: |
           export XDG_CONFIG_HOME="$HOME"
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > "$XDG_CONFIG_HOME/.npmrc"
