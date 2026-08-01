@@ -4,3 +4,4 @@ build/
 target/
 bun.lock
 examples/tauri-app/src-tauri/gen/
+ui/
