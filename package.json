@@ -34,7 +34,7 @@
     }
   },
   "scripts": {
-    "build": "bun run --filter @exegia/plugin-supabase-auth build && bun run --filter @exegia/auth-ui build && bun run --filter tauri-app build",
+    "build": "bun run --filter @exegia/plugin-supabase-auth build && bun run --filter @exegia/use-auth build && bun run --filter tauri-app build",
     "test": "bun run --filter '*' test",
     "test:e2e": "cargo test --test e2e_lifecycle -- --ignored --nocapture"
   },

@@ -9,7 +9,7 @@ Email/password, magic links and one-time codes work against a fresh local Supaba
 
 - A Tauri v2 app with a Rust `src-tauri/` crate
 - A Supabase project (hosted, or a local stack via `supabase start`)
-- A GitHub token with `read:packages` to install the npm packages from GitHub Packages
+- A GitHub token with `read:packages` to install the bindings package from GitHub Packages (`@exegia/use-auth` comes from the public npm registry and needs no token)
 
 <Steps>
 <Step title="Install the plugin">
@@ -28,7 +28,11 @@ tauri::Builder::default()
 
 <Step title="Install the frontend packages">
 
-Both npm packages live on GitHub Packages, so point the `@exegia` scope there:
+`@exegia/use-auth` (the React hooks) lives on the public npm registry; the bindings package lives on GitHub Packages. Install the hooks first, then point the `@exegia` scope at GitHub Packages for the bindings:
+
+```bash
+bun add @exegia/use-auth        # optional: the React hooks (public npm registry)
+```
 
 ```ini .npmrc
 @exegia:registry=https://npm.pkg.github.com
@@ -37,7 +41,6 @@ Both npm packages live on GitHub Packages, so point the `@exegia` scope there:
 
 ```bash
 bun add @exegia/plugin-supabase-auth
-bun add @exegia/auth-ui        # optional: the React hooks
 ```
 
 </Step>
@@ -80,7 +83,7 @@ Everything else has defaults — see [Configuration](/plugin/configuration).
 The fastest path from React is the hooks — headless, so the markup is yours:
 
 ```tsx
-import { useAuth, useSession } from "@exegia/auth-ui";
+import { useAuth, useSession } from "@exegia/use-auth";
 
 export default function App() {
   const { status, user } = useSession();

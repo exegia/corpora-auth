@@ -1,7 +1,7 @@
 # Supabase Auth example app
 
 Runnable Tauri v2 app demonstrating `tauri-plugin-supabase-auth` and the
-`@exegia/auth-ui` hooks working together.
+`@exegia/use-auth` hooks working together.
 
 The UI here is deliberately plain: hand-written forms and one small
 stylesheet (`src/styles.css`), no component library and no Tailwind. The

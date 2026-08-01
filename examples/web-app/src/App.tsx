@@ -1,10 +1,10 @@
 import "./index.css";
 
 import { useState } from "react";
-import { resolveMessage, useAuth } from "@exegia/auth-ui";
+import { resolveMessage, useAuth } from "@exegia/use-auth";
 
 /**
- * Browser-only demo of `@exegia/auth-ui`.
+ * Browser-only demo of `@exegia/use-auth`.
  *
  * The package ships hooks, not components — so this is what consuming it looks
  * like: `useAuth` for actions, `resolveMessage` for user-facing copy, and
@@ -34,7 +34,7 @@ export function App() {
 
   return (
     <main className="demo">
-      <h1>@exegia/auth-ui</h1>
+      <h1>@exegia/use-auth</h1>
       <p className="muted">
         Hooks over the plugin bindings. Outside a Tauri window there is no
         plugin behind them, so signing in here comes back as a structured

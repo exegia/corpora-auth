@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSession } from "@exegia/auth-ui";
+import { useSession } from "@exegia/use-auth";
 import { invoke } from "@tauri-apps/api/core";
 import { LinkedAccounts } from "../components/LinkedAccounts";
 import { PasskeyList } from "../components/PasskeyList";

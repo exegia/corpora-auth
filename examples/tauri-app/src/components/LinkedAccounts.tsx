@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { resolveMessage, useIdentities } from "@exegia/auth-ui";
+import { resolveMessage, useIdentities } from "@exegia/use-auth";
 import type { AuthError, Provider } from "@exegia/plugin-supabase-auth";
 
 /**

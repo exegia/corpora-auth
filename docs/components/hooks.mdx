@@ -1,6 +1,6 @@
 ---
 title: "Hooks"
-description: "The whole published surface of @exegia/auth-ui: state and actions, no UI."
+description: "The whole published surface of @exegia/use-auth: state and actions, no UI."
 ---
 
 Every hook talks to the plugin bindings directly. There is no provider to mount and no shared store to configure.
@@ -12,7 +12,7 @@ Actions never throw. They resolve to a discriminated result, so a failed call is
 Session state, kept current by push events.
 
 ```tsx
-import { useSession } from "@exegia/auth-ui";
+import { useSession } from "@exegia/use-auth";
 
 const { session, user, status } = useSession();
 
@@ -32,7 +32,7 @@ return <App user={user} />;
 Stable async actions wrapping the bindings.
 
 ```tsx
-import { useAuth } from "@exegia/auth-ui";
+import { useAuth } from "@exegia/use-auth";
 
 const auth = useAuth();
 

@@ -22,7 +22,7 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
 
-    // @exegia/auth-ui resolves to react/dist rather than react/src on purpose. The
+    // @exegia/use-auth resolves to react/dist rather than react/src on purpose. The
     // package's own entry points at src/ (it is consumed as source inside the
     // workspace), which would pull the package's sources *and its test files* into this
     // program and type-check them under flags the package does not use
@@ -33,7 +33,7 @@
     // web-app make targets do for you.
     "paths": {
       "@/*": ["./src/*"],
-      "@exegia/auth-ui": ["../../react/dist"],
+      "@exegia/use-auth": ["../../react/dist"],
     },
 
     // Some stricter flags (disabled by default)
