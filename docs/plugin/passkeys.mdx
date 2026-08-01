@@ -34,7 +34,7 @@ The OS prompt runs behind a `CeremonyProvider` trait. Precedence:
 | --- | --- | --- |
 | macOS | `ASAuthorizationPlatformPublicKeyCredentialProvider`, macOS 13+ | The OS builds `clientDataJSON` and derives the origin from Associated Domains, so `passkeys.origin` is ignored here |
 | Windows | `webauthn.dll`, Windows 10 19H1+ | The app asserts the configured `passkeys.origin`; without it the provider reports unavailable. The DLL is loaded dynamically, so older systems report `Unavailable` rather than failing to launch |
-| Linux | None | No platform authenticator. `getPasskeyCapability()` reports it honestly and the UI kit blocks hide themselves |
+| Linux | None | No platform authenticator. `getPasskeyCapability()` reports it honestly, and `usePasskeys().capability` stays unusable so your UI can hide itself |
 
 Both built-ins are compiled behind `cfg(target_os = …)`, so a Linux build carries neither.
 
@@ -115,13 +115,13 @@ A signed build, an App ID with the Associated Domains capability, and an `apple-
 ## Using it
 
 ```tsx
-import { PasskeySignIn, PasskeyManager } from "@exegia/auth-ui";
+import { usePasskeys } from "@exegia/auth-ui";
 
 // Sign-in screen — renders nothing when the device can't prompt
-<PasskeySignIn onSignedIn={() => navigate("/app")} />;
+const { capability, signIn } = usePasskeys();
 
 // Settings screen
-<PasskeyManager onRegistered={(passkey) => toast(`Added ${passkey.friendlyName}`)} />;
+const { passkeys, register, rename, remove } = usePasskeys();
 ```
 
 Or through the [bindings](/plugin/javascript-api) directly.
@@ -129,6 +129,6 @@ Or through the [bindings](/plugin/javascript-api) directly.
 ## Traps worth knowing
 
 - **Registration always requires an authenticated user.** A passkey binds to an existing account, so there is no passkey-first sign-up. Sign in another way, then register.
-- **Deleting the last passkey is not blocked server-side.** `<PasskeyManager />` warns before it happens; do the same in a custom UI, and keep another sign-in method on every account.
+- **Deleting the last passkey is not blocked server-side.** Warn before it happens in your UI, and keep another sign-in method on every account.
 - **On macOS, an unentitled build reports passkeys as usable.** Availability keys on the macOS version floor alone, so the entitlement failure only surfaces at prompt time. A build that looks fine can fail at the prompt.
 - **`rp_id` cannot stay `localhost` for macOS native ceremonies.** An associated domain must be a real domain you control, so `rp_id` and `rp_origins` both have to move — and moving `rp_id` invalidates enrolled passkeys.
