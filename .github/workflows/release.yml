@@ -6,9 +6,10 @@
 #   @exegia/plugin-supabase-auth  -> GitHub Packages  (GITHUB_TOKEN)
 #   @exegia/use-auth              -> npmjs.org        (NPM_TOKEN)
 #
-# Nothing is re-tested here — the exact tree being published already passed
-# `check` and `package` on the release PR. `make install build` runs only
-# because publishing needs dist/ to exist.
+# Nothing is re-tested or re-verified here — the exact tree being published
+# already passed `check` and `package` on the release PR. The build step exists
+# only because publishing needs the two dist/ directories, and it builds those
+# alone: this job has no Rust toolchain deps installed.
 #
 # Every publish target is idempotent, so re-running a partly-failed release is
 # safe: what is already on a registry is skipped, not re-pushed. Publishing runs
@@ -64,7 +65,12 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - run: make install build
+      # The two npm dist/ directories and nothing else. NOT `make build`, which
+      # also runs build-plugin (`cargo publish --dry-run`) — that compiles the
+      # crate, so it needs the webkit/glib system packages `pr.yml`'s `check`
+      # job installs and this one deliberately does not. The dry-run already
+      # ran there, against this exact tree, on the release PR.
+      - run: make install build-bindings build-ui
 
       # Two registries, never mapped at the same time: each step owns
       # $HOME/.npmrc for its own duration and hands it back. See
