@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
-import {
-  ForgotPasswordForm,
-  OnboardingFlow,
-  OtpForm,
-  PasskeySignIn,
-  SignInForm,
-  SocialButtons,
-} from "@exegia/auth-ui";
 import { getSession, type AuthError, type Session } from "@exegia/plugin-supabase-auth";
 import { AccountPanel } from "./AccountPanel";
 import { ErrorReport } from "../components/ErrorReport";
+import { OtpForm } from "../components/OtpForm";
+import { PasskeyButton } from "../components/PasskeyButton";
+import { ForgotPasswordForm, PasswordForm } from "../components/PasswordForm";
 import { SessionResult } from "../components/SessionResult";
+import { SignUpFlow } from "../components/SignUpFlow";
+import { SocialButton } from "../components/SocialButton";
 import { toDiagnostic, type Diagnostic } from "../lib/diagnostics";
 import type { AuthMethod } from "../lib/methods";
 import { abandonPendingOAuth, returnToPicker } from "../lib/windows";
@@ -49,35 +46,31 @@ export function MethodWindow({ method }: { method: AuthMethod }): React.ReactEle
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-4 p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-lg font-semibold">{method.title}</h1>
-        <p className="text-muted-foreground text-xs">{method.blurb}</p>
+    <main className="page" style={{ maxWidth: 480 }}>
+      <header className="stack-sm">
+        <h1>{method.title}</h1>
+        <p className="small muted">{method.blurb}</p>
       </header>
 
-      <div className="bg-card text-card-foreground flex flex-col gap-5 rounded-xl border p-5 shadow-sm">
-      {phase.kind === "success" ? (
-        <SessionResult onClose={() => void close()} session={phase.session} />
-      ) : phase.kind === "error" ? (
-        <ErrorReport diagnostic={phase.diagnostic} onDismiss={() => void close()} />
-      ) : (
-        <>
-          <MethodForm
-            forgot={forgot}
-            method={method}
-            onError={fail}
-            onForgot={() => setForgot(true)}
-            onSuccess={succeed}
-          />
-          <button
-            className="text-muted-foreground hover:text-foreground mt-auto text-xs underline"
-            onClick={() => void close()}
-            type="button"
-          >
-            Cancel and go back
-          </button>
-        </>
-      )}
+      <div className="card">
+        {phase.kind === "success" ? (
+          <SessionResult onClose={() => void close()} session={phase.session} />
+        ) : phase.kind === "error" ? (
+          <ErrorReport diagnostic={phase.diagnostic} onDismiss={() => void close()} />
+        ) : (
+          <>
+            <MethodForm
+              forgot={forgot}
+              method={method}
+              onError={fail}
+              onForgot={() => setForgot(true)}
+              onSuccess={succeed}
+            />
+            <button className="link" onClick={() => void close()} type="button">
+              Cancel and go back
+            </button>
+          </>
+        )}
       </div>
     </main>
   );
@@ -98,11 +91,7 @@ function MethodForm({
 }): React.ReactElement {
   if (method.provider) {
     return (
-      <SocialButtons
-        onError={onError}
-        onSuccess={onSuccess}
-        providers={[method.provider]}
-      />
+      <SocialButton onError={onError} onSuccess={onSuccess} provider={method.provider} />
     );
   }
 
@@ -114,14 +103,19 @@ function MethodForm({
       return forgot ? (
         <ForgotPasswordForm />
       ) : (
-        <SignInForm onError={onError} onForgotPassword={onForgot} onSuccess={onSuccess} />
+        <PasswordForm
+          onError={onError}
+          onForgotPassword={onForgot}
+          onSuccess={onSuccess}
+        />
       );
     case "signup":
-      // OnboardingFlow reports completion with a user, not a session. Read the
-      // real session back rather than fabricating one — the result panel shows
-      // token type and expiry, and invented values there would be a lie.
+      // The onboarding flow reports completion with a user, not a session.
+      // Read the real session back rather than fabricating one — the result
+      // panel shows token type and expiry, and invented values there would be
+      // a lie.
       return (
-        <OnboardingFlow
+        <SignUpFlow
           onComplete={() => {
             void getSession().then((session) => {
               if (session) onSuccess(session);
@@ -142,9 +136,9 @@ function MethodForm({
       // window — a passkey is bound to an existing user, so there is no
       // passkey-first sign-up path to offer here.
       return (
-        <div className="flex flex-col gap-3">
-          <PasskeySignIn onError={onError} onSignedIn={onSuccess} />
-          <p className="text-muted-foreground text-xs">
+        <div className="stack">
+          <PasskeyButton onError={onError} onSuccess={onSuccess} />
+          <p className="small muted">
             Passkeys sign you in to an account you already have. To create one,
             sign in another way and use <strong>Manage this account</strong> →{" "}
             <strong>Passkeys</strong>.
@@ -152,6 +146,6 @@ function MethodForm({
         </div>
       );
     default:
-      return <p className="text-sm">Unknown method.</p>;
+      return <p>Unknown method.</p>;
   }
 }

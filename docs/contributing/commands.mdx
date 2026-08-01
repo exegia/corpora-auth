@@ -49,7 +49,7 @@ make tauri ARGS="info"
 <Warning>
 These targets are not standalone — they build their prerequisites first, and that ordering is load-bearing.
 
-Both example apps render `@exegia/auth-ui`, which imports the bindings package; that resolves to `guest-js/dist` through the workspace link, so **the bindings must exist before either dev server can start**. The web example goes one step further: its `tsconfig` maps `@exegia/auth-ui` to `ui/dist`, and bun honours `tsconfig` paths, so its bundle comes from the built UI kit rather than from source. A stale `ui/dist` is a stale app.
+Both example apps consume `@exegia/auth-ui`, which imports the bindings package; that resolves to `guest-js/dist` through the workspace link, so **the bindings must exist before either dev server can start**. The web example goes one step further: its `tsconfig` maps `@exegia/auth-ui` to `react/dist`, and bun honours `tsconfig` paths, so its bundle comes from the built package rather than from source. A stale `react/dist` is a stale app.
 
 That is why `dev:web` and `start:web` depend on `build:ui` while `dev:tauri` and `dev:mcp` only need `build:bindings`.
 </Warning>
@@ -60,7 +60,7 @@ That is why `dev:web` and `start:web` depend on `build:ui` while `dev:tauri` and
 | --- | --- |
 | `make build` | Build every publishable artifact |
 | `make build:bindings` | Build `@exegia/plugin-supabase-auth` (tsup, esm + cjs + dts) |
-| `make build:ui` | Build `@exegia/auth-ui` into `ui/dist` (needs the bindings' dist) |
+| `make build:ui` | Build `@exegia/auth-ui` into `react/dist` (needs the bindings' dist) |
 | `make build:plugin` | Verify the Rust crate packages cleanly for crates.io (`cargo publish --dry-run`) |
 | `make build:example` | Build the Tauri example's frontend bundle |
 | `make build:tauri` | Alias for `build:example` |
@@ -69,7 +69,7 @@ That is why `dev:web` and `start:web` depend on `build:ui` while `dev:tauri` and
 | `make docker:shell` | Build the image and open a shell in it with the repo mounted |
 | `make pack` | Produce inspectable npm tarballs in `dist-packages/` |
 
-`make build` chains the three publishable artifacts in dependency order: bindings, then the UI kit, then the crate package check.
+`make build` chains the three publishable artifacts in dependency order: bindings, then the hooks package, then the crate package check.
 
 <Note>
 `build:plugin` and `pack` only *verify* that a release would work. Neither publishes anything — releases are a `workflow_dispatch` on `release.yml`.
@@ -96,8 +96,8 @@ Narrower runs go through the underlying tools directly:
 
 ```bash
 cargo test --test auth_lifecycle sign_up_with_autoconfirm_signs_in   # one Rust test
-cd ui && bun x vitest run src/blocks/__tests__/otp-form.test.tsx     # one UI file
-cd ui && bun x vitest run -t "resumes"                               # by test name
+cd react && bun x vitest run src/hooks/__tests__/use-passkeys.test.ts  # one file
+cd react && bun x vitest run -t "resumes"                             # by test name
 ```
 
 <Warning>

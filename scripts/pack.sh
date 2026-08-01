@@ -52,7 +52,7 @@ pack_package() {
 
 heading "Packing"
 pack_package guest-js "$PKG_BINDINGS"
-pack_package ui "$PKG_UI"
+pack_package react "$PKG_UI"
 
 heading "Tarballs"
 for tgz in "$DIST"/*.tgz; do

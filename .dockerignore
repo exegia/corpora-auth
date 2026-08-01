@@ -3,3 +3,4 @@
 # node_modules to the daemon and looks like a hang.
 *
 !docker/
+ui/

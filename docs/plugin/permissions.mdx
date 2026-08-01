@@ -52,10 +52,10 @@ Add these individually alongside `supabase-auth:default`.
 
 | Permission | Needed by |
 | --- | --- |
-| `allow-reset-password-for-email` | `resetPasswordForEmail`, `<ForgotPasswordForm />` |
-| `allow-update-user` | `updateUser`, `<UpdatePasswordForm />`, `<OnboardingFlow />` |
+| `allow-reset-password-for-email` | `resetPasswordForEmail`, `useAuth().resetPassword` |
+| `allow-update-user` | `updateUser`, `useAuth().updateUser`, `useOnboardingFlow()` |
 
-`<OnboardingFlow />` needs `allow-update-user` because it persists step progress in `user_metadata` so an abandoned flow resumes on the next launch.
+`useOnboardingFlow()` needs `allow-update-user` because it persists step progress in `user_metadata` so an abandoned flow resumes on the next launch.
 
 </Tab>
 <Tab title="Account linking">

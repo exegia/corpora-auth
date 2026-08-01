@@ -36,7 +36,7 @@ BUILD_PATHS=(
   "examples/tauri-app/dist"
   "examples/tauri-app/.mcp-artifacts"
   "examples/web-app/dist"
-  "ui/dist"
+  "react/dist"
   "guest-js/dist"
   "dist-packages"
   "node_modules/.vite"
