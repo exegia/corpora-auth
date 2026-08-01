@@ -6,7 +6,7 @@ name: Docker
 # repo sources, so rebuilding on every commit would republish an identical image.
 on:
   push:
-    branches: [main, next, dev]
+    branches: [main]
     paths:
       - docker/**
       - .dockerignore

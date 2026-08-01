@@ -17,17 +17,20 @@ WEB       := $(REPO_ROOT)/examples/web-app
 
 BUN ?= bun
 
+# `--frozen-lockfile` in CI (the workflows set it), a plain install locally.
+INSTALL_FLAGS ?=
+
 # Workspace package names, so the targets read the way the registry does.
 # Every script in every workspace package.json has a target below; `make help`
 # is the index. The mapping is:
 #
 #   guest-js  @exegia/plugin-supabase-auth  build test
-#   ui        @exegia/auth-ui              build test typecheck
+#   ui        @exegia/use-auth              build test typecheck
 #   tauri-app tauri-app                    dev build preview tauri test
 #   web-app   web-app                      dev build start
 #
 PKG_BINDINGS := @exegia/plugin-supabase-auth
-PKG_UI       := @exegia/auth-ui
+PKG_UI       := @exegia/use-auth
 PKG_TAURI    := tauri-app
 PKG_WEB      := web-app
 CRATE        := tauri-plugin-supabase-auth
@@ -68,8 +71,8 @@ setup: install ## Install dependencies and preflight the toolchain
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" doctor
 
 .PHONY: install
-install: ## bun install across the workspace
-	@cd "$(REPO_ROOT)" && $(BUN) install
+install: ## bun install across the workspace (INSTALL_FLAGS=--frozen-lockfile in CI)
+	@cd "$(REPO_ROOT)" && $(BUN) install $(INSTALL_FLAGS)
 
 .PHONY: doctor
 doctor: ## Diagnose the toolchain, Supabase stack and ports
@@ -77,12 +80,12 @@ doctor: ## Diagnose the toolchain, Supabase stack and ports
 
 # ---------------------------------------------------------------- run
 
-# Both example apps render @exegia/auth-ui, which imports the bindings package.
+# Both example apps render @exegia/use-auth, which imports the bindings package.
 # That resolves to guest-js/dist through the workspace link, so the bindings
 # have to exist before either dev server can start — the same ordering
 # `test:ui` relies on.
 #
-# The web example goes one step further: its tsconfig maps @exegia/auth-ui to
+# The web example goes one step further: its tsconfig maps @exegia/use-auth to
 # react/dist (see the comment there), and bun honours tsconfig paths, so it needs
 # the built UI kit rather than just the bindings. `build-ui` already depends on
 # `build-bindings`.
@@ -124,7 +127,7 @@ build\:bindings: build-bindings ## Build @exegia/plugin-supabase-auth (tsup, esm
 build-bindings:
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_BINDINGS)' build
 
-build\:ui: build-ui ## Build @exegia/auth-ui into react/dist (needs the bindings' dist)
+build\:ui: build-ui ## Build @exegia/use-auth into react/dist (needs the bindings' dist)
 build-ui: build-bindings
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' build
 
@@ -173,8 +176,8 @@ test-workspaces: build-bindings
 
 # The UI suite imports @exegia/plugin-supabase-auth, which resolves through the
 # workspace link to guest-js/dist — so the bindings have to be built first. This
-# is the same ordering the `web` job in .github/workflows/ci.yml relies on.
-test\:ui: test-ui ## vitest for @exegia/auth-ui (builds the bindings first)
+# is the same ordering the `check` job in .github/workflows/pr.yml relies on.
+test\:ui: test-ui ## vitest for @exegia/use-auth (builds the bindings first)
 test-ui: build-bindings
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' test
 
@@ -205,7 +208,7 @@ fmt: ## Format the Rust sources
 .PHONY: typecheck
 typecheck: typecheck-ui typecheck-tauri typecheck-web ## tsc --noEmit across the TypeScript packages
 
-typecheck\:ui: typecheck-ui ## tsc --noEmit for @exegia/auth-ui
+typecheck\:ui: typecheck-ui ## tsc --noEmit for @exegia/use-auth
 typecheck-ui:
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' typecheck
 
@@ -213,10 +216,94 @@ typecheck\:tauri: typecheck-tauri ## tsc --noEmit for the Tauri example
 typecheck-tauri:
 	@$(MAKE) --no-print-directory -C "$(EXAMPLE)" typecheck
 
-# Resolves @exegia/auth-ui through react/dist, so the package has to be built first.
+# Resolves @exegia/use-auth through react/dist, so the package has to be built first.
 typecheck\:web: typecheck-web ## tsc --noEmit for the web example
 typecheck-web: build-ui
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_WEB)' typecheck
+
+# ---------------------------------------------------------------- release
+
+# Everything .github/workflows/*.yml does is one of these, so a workflow step is
+# always a one-line `make` and always reproducible locally. See .github/WORKFLOW.md
+# for the branch flow they implement.
+#
+#   BUMP=major|minor|patch   which version `release:branch` cuts next
+#   VERSION=x.y.z            an explicit version, overriding BUMP
+#   RANGE=a..b               commit range for `release:notes`
+#   BASE/HEAD/TITLE          the PR `pr:guard` validates
+#   BRANCH                   the branch `release:pr` / `release:delete` acts on
+BUMP    ?= minor
+VERSION ?=
+RANGE   ?=
+BRANCH  ?=
+
+export BUMP VERSION RANGE BRANCH
+
+.PHONY: ci
+ci: install check test build ## Everything CI runs on a pull request
+
+pr\:guard: pr-guard ## Validate a PR's base, branch name and title (env: BASE, HEAD, TITLE)
+pr-guard:
+	@"$(SCRIPTS)/release.sh" guard
+
+version\:current: version-current ## Print the version the three manifests declare
+version-current:
+	@"$(SCRIPTS)/version.sh" current
+
+version\:next: version-next ## Print the version after the newest vX.Y.Z tag (env: BUMP)
+version-next:
+	@"$(SCRIPTS)/version.sh" next "$(BUMP)"
+
+version\:set: version-set ## Write VERSION into both packages and the crate, refresh lockfiles
+version-set:
+	@"$(SCRIPTS)/version.sh" set "$(VERSION)"
+
+version\:check: version-check ## Fail unless both packages and the crate agree on one version
+version-check:
+	@"$(SCRIPTS)/version.sh" check
+
+release\:notes: release-notes ## Print a markdown changelog for RANGE (default origin/main..HEAD)
+release-notes:
+	@"$(SCRIPTS)/release.sh" notes
+
+release\:pr: release-pr ## Open or refresh the draft release PR into main (env: BRANCH)
+release-pr:
+	@"$(SCRIPTS)/release.sh" pr
+
+release\:branch: release-branch ## Cut release/v<next> from main with the versions bumped
+release-branch:
+	@"$(SCRIPTS)/release.sh" branch
+
+release\:delete: release-delete ## Delete a remote branch, tolerating one already gone (env: BRANCH)
+release-delete:
+	@"$(SCRIPTS)/release.sh" delete
+
+release\:tag: release-tag ## Tag v<version> and publish the GitHub Release
+release-tag:
+	@"$(SCRIPTS)/release.sh" tag
+
+.PHONY: publish
+publish: publish-bindings publish-ui publish-crate ## Publish all three artifacts (CI only — needs registry tokens)
+
+publish\:bindings: publish-bindings ## Publish @exegia/plugin-supabase-auth to GitHub Packages
+publish-bindings:
+	@"$(SCRIPTS)/publish.sh" bindings
+
+publish\:ui: publish-ui ## Publish @exegia/use-auth to npmjs.org
+publish-ui:
+	@"$(SCRIPTS)/publish.sh" ui
+
+publish\:crate: publish-crate ## Publish tauri-plugin-supabase-auth to crates.io (skips without a token)
+publish-crate:
+	@"$(SCRIPTS)/publish.sh" crate
+
+rulesets\:diff: rulesets-diff ## List the rulesets GitHub currently has
+rulesets-diff:
+	@"$(SCRIPTS)/release.sh" rulesets
+
+rulesets\:apply: rulesets-apply ## Push .github/rulesets/*.json to GitHub (matched by name)
+rulesets-apply:
+	@"$(SCRIPTS)/release.sh" rulesets --apply
 
 # ---------------------------------------------------------------- supabase
 
@@ -255,4 +342,10 @@ clean-dry:
 .PHONY: test-rust test-bindings test-workspaces test-ui test-e2e test-example
 .PHONY: typecheck\:ui typecheck\:tauri typecheck\:web
 .PHONY: typecheck-ui typecheck-tauri typecheck-web
+.PHONY: pr\:guard version\:current version\:next version\:set version\:check
+.PHONY: pr-guard version-current version-next version-set version-check
+.PHONY: release\:notes release\:pr release\:branch release\:delete release\:tag
+.PHONY: release-notes release-pr release-branch release-delete release-tag
+.PHONY: publish\:bindings publish\:ui publish\:crate rulesets\:diff rulesets\:apply
+.PHONY: publish-bindings publish-ui publish-crate rulesets-diff rulesets-apply
 .PHONY: clean\:build clean\:dry clean-build clean-dry

@@ -60,3 +60,25 @@ confirm() {
   read -r -p "$1 " answer
   [ "$answer" = "$2" ]
 }
+
+# apply_publish_config <dir> -> rewrite <dir>/package.json in place with its
+# publishConfig field overrides applied (registry excluded — it is a client
+# setting, not a manifest field).
+#
+# `bun pm pack` and `bun publish` strip workspace:* protocols but, unlike pnpm,
+# do NOT apply these overrides. @exegia/use-auth relies on them to point
+# consumers at dist/ instead of src/, so without this the tarball's package.json
+# says "main": "./src/index.ts" — valid-looking and broken. Callers are
+# responsible for restoring the tracked manifest afterwards; scripts/pack.sh and
+# scripts/publish.sh both do it from a trap.
+apply_publish_config() {
+  bun -e '
+    const fs = require("fs");
+    const path = process.argv[1] + "/package.json";
+    const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+    const { registry, ...overrides } = pkg.publishConfig ?? {};
+    if (Object.keys(overrides).length === 0) process.exit(0);
+    Object.assign(pkg, overrides);
+    fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+  ' "$1"
+}
