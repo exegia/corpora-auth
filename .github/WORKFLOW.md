@@ -75,13 +75,29 @@ Every step is a `make` target, so anything CI does can be reproduced locally.
 
 ## Bootstrap and manual operations
 
-There is no release branch to start from after this migration. Run the
-**Release** workflow manually (`Actions → Release → Run workflow`, pick a bump)
-— the publish job skips and the next-release job opens the branch. Locally:
+Once this pipeline is on `main`, a release branch is opened for you after every
+release, and you can always open one by hand: run the **Release** workflow
+(`Actions → Release → Run workflow`, pick a bump) — the publish job skips and
+the next-release job opens the branch. Locally:
 
 ```bash
 make release:branch BUMP=minor
 ```
+
+**Neither works for the very first one.** `workflow_dispatch` runs the *default
+branch's* copy of a workflow, and `make release:branch` runs `version.sh` after
+checking out `main` — so until `main` carries this pipeline, the dispatch runs
+the workflow it replaced and the make target runs a script that isn't there.
+Cut the first branch with a plain push, which the ruleset permits because it
+guards `main` and nothing else:
+
+```bash
+git push origin origin/main:refs/heads/release/v0.7.0
+```
+
+Then take the normal route: feature PR into that branch, bump the versions on
+it, and PR it into `main`. Merging that PR is what puts `release.yml` on `main`,
+and every release after it uses the dispatch above.
 
 Other useful targets:
 
