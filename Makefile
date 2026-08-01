@@ -208,8 +208,14 @@ fmt: ## Format the Rust sources
 .PHONY: typecheck
 typecheck: typecheck-ui typecheck-tauri typecheck-web ## tsc --noEmit across the TypeScript packages
 
-typecheck\:ui: typecheck-ui ## tsc --noEmit for @exegia/use-auth
-typecheck-ui:
+# Same ordering `test-ui` needs, and for the same reason: the hooks import
+# @exegia/plugin-supabase-auth, which resolves through the workspace link to
+# guest-js/dist. Without this the whole package type-checks against a module
+# that does not exist — every import becomes TS2307 and everything downstream
+# of it implicit `any`. Only shows up on a cold tree, which is why `make ci`
+# has to be verified after `make clean:build`.
+typecheck\:ui: typecheck-ui ## tsc --noEmit for @exegia/use-auth (builds the bindings first)
+typecheck-ui: build-bindings
 	@cd "$(REPO_ROOT)" && $(BUN) run --filter '$(PKG_UI)' typecheck
 
 typecheck\:tauri: typecheck-tauri ## tsc --noEmit for the Tauri example
