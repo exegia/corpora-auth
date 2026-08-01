@@ -17,4 +17,3 @@ export type {
 export * from "./lib/error-messages";
 export * from "./lib/schemas";
 export * from "./lib/onboarding";
-export { cn } from "./lib/utils";

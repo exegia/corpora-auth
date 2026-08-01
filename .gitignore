@@ -24,10 +24,6 @@ Thumbs.db
 .vscode/
 react/dist/
 react/node_modules/
-react/src/blocks/
-react/src/components/
-react/src/fonts/
-react/src/styles.css
 supabase/
 
 # Local npm tarballs from `make pack`
