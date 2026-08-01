@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { resolveMessage, usePasskeys } from "@exegia/auth-ui";
+import { resolveMessage, usePasskeys } from "@exegia/use-auth";
 import type { AuthError } from "@exegia/plugin-supabase-auth";
 
 /**

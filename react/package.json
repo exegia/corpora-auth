@@ -1,6 +1,6 @@
 {
-  "name": "@exegia/auth-ui",
-  "version": "0.6.0",
+  "name": "@exegia/use-auth",
+  "version": "0.7.0",
   "description": "React hooks for tauri-plugin-supabase-auth",
   "type": "module",
   "main": "./src/index.ts",
@@ -46,7 +46,8 @@
     "directory": "react"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
+    "registry": "https://registry.npmjs.org",
+    "access": "public",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {

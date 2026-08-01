@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Accordion } from "@base-ui/react/accordion";
 import { invoke } from "@tauri-apps/api/core";
-import { resolveMessage } from "@exegia/auth-ui";
+import { resolveMessage } from "@exegia/use-auth";
 import { buildReport, copyText, nextSteps, type Diagnostic } from "../lib/diagnostics";
 
 const CLAUDE_URL = "https://claude.ai/new";

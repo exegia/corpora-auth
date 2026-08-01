@@ -1,0 +1,23 @@
+name: Setup
+description: Bun and Node, the two runtimes every JavaScript step here needs.
+
+runs:
+  using: composite
+  steps:
+    # Reads the version from the root package.json "packageManager" field.
+    - uses: oven-sh/setup-bun@v2
+
+    # bun runs everything, but node is still required: vitest and tsc shims
+    # spawn it, and the vitest forks pool runs each test file in a `node` child
+    # — so this pin, not bun, is what jsdom has to satisfy. jsdom 30 requires
+    # ^22.22.2 || ^24.15.0 || >=26.0.0 (its undici 8 dependency reads
+    # `markAsUncloneable` from node:worker_threads, absent before Node 22.10).
+    # Don't lower it without checking jsdom's engines.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+
+    # No registry-url on purpose. `bun publish` does not reliably read the
+    # .npmrc setup-node writes (oven-sh/bun#24124); scripts/publish.sh writes
+    # its own, per registry, for the duration of one publish. See the comment
+    # there — that placement is the verified one.

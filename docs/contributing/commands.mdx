@@ -49,7 +49,7 @@ make tauri ARGS="info"
 <Warning>
 These targets are not standalone — they build their prerequisites first, and that ordering is load-bearing.
 
-Both example apps consume `@exegia/auth-ui`, which imports the bindings package; that resolves to `guest-js/dist` through the workspace link, so **the bindings must exist before either dev server can start**. The web example goes one step further: its `tsconfig` maps `@exegia/auth-ui` to `react/dist`, and bun honours `tsconfig` paths, so its bundle comes from the built package rather than from source. A stale `react/dist` is a stale app.
+Both example apps consume `@exegia/use-auth`, which imports the bindings package; that resolves to `guest-js/dist` through the workspace link, so **the bindings must exist before either dev server can start**. The web example goes one step further: its `tsconfig` maps `@exegia/use-auth` to `react/dist`, and bun honours `tsconfig` paths, so its bundle comes from the built package rather than from source. A stale `react/dist` is a stale app.
 
 That is why `dev:web` and `start:web` depend on `build:ui` while `dev:tauri` and `dev:mcp` only need `build:bindings`.
 </Warning>
@@ -60,7 +60,7 @@ That is why `dev:web` and `start:web` depend on `build:ui` while `dev:tauri` and
 | --- | --- |
 | `make build` | Build every publishable artifact |
 | `make build:bindings` | Build `@exegia/plugin-supabase-auth` (tsup, esm + cjs + dts) |
-| `make build:ui` | Build `@exegia/auth-ui` into `react/dist` (needs the bindings' dist) |
+| `make build:ui` | Build `@exegia/use-auth` into `react/dist` (needs the bindings' dist) |
 | `make build:plugin` | Verify the Rust crate packages cleanly for crates.io (`cargo publish --dry-run`) |
 | `make build:example` | Build the Tauri example's frontend bundle |
 | `make build:tauri` | Alias for `build:example` |
@@ -72,9 +72,9 @@ That is why `dev:web` and `start:web` depend on `build:ui` while `dev:tauri` and
 `make build` chains the three publishable artifacts in dependency order: bindings, then the hooks package, then the crate package check.
 
 <Note>
-`build:plugin` and `pack` only *verify* that a release would work. Neither publishes anything — releases are a `workflow_dispatch` on `release.yml`.
+`build:plugin` and `pack` only *verify* that a release would work. Neither publishes anything — releases happen when a `release/vX.Y.Z` PR merges into `main`, via the `publish:*` targets.
 
-`pack` exists because `bun pm pack` does not apply `publishConfig` field overrides, so packing `@exegia/auth-ui` naively yields a tarball still pointing at `./src/index.ts`. `scripts/pack.sh` mirrors the rewrite that the release workflow performs.
+`pack` exists because `bun pm pack` does not apply `publishConfig` field overrides, so packing `@exegia/use-auth` naively yields a tarball still pointing at `./src/index.ts`. `scripts/pack.sh` mirrors the rewrite that the release workflow performs.
 </Note>
 
 The Docker targets reproduce the Linux CI toolchain (Rust, webkit2gtk, bun, node, the Supabase CLI) so the Linux build is reachable from macOS. The image is for local use; CI itself runs on `runs-on`, not inside it.
@@ -88,7 +88,7 @@ The Docker targets reproduce the Linux CI toolchain (Rust, webkit2gtk, bun, node
 | `make test:plugin` | Alias for `test:rust` |
 | `make test:bindings` | Run `@exegia/plugin-supabase-auth`'s test script |
 | `make test:workspaces` | Run the `test` script in every workspace package |
-| `make test:ui` | vitest for `@exegia/auth-ui` (builds the bindings first) |
+| `make test:ui` | vitest for `@exegia/use-auth` (builds the bindings first) |
 | `make test:e2e` | Full auth lifecycle against the local Supabase stack |
 | `make test:example` | Run the Tauri example's own test script |
 
@@ -114,11 +114,43 @@ The E2E lifecycle test is `#[ignore]`d and needs credentials. `make test:e2e` re
 | `make lint` | `cargo fmt --check` + clippy for the plugin and the example |
 | `make fmt` | Format the Rust sources |
 | `make typecheck` | `tsc --noEmit` across the TypeScript packages |
-| `make typecheck:ui` | `tsc --noEmit` for `@exegia/auth-ui` |
+| `make typecheck:ui` | `tsc --noEmit` for `@exegia/use-auth` |
 | `make typecheck:tauri` | `tsc --noEmit` for the Tauri example |
 | `make typecheck:web` | `tsc --noEmit` for the web example |
 
 `lint` and `fmt` cover two Cargo workspaces: the plugin at the repo root, and the example's `src-tauri/`, which has its own lockfile and is not reached by root `cargo` commands.
+
+## Release pipeline
+
+Every step in `.github/workflows/*.yml` is one of these targets, so anything CI does can be run locally. The branch flow they implement is described in [`.github/WORKFLOW.md`](https://github.com/exegia/corpora-auth/blob/main/.github/WORKFLOW.md).
+
+| Target | What it does |
+| --- | --- |
+| `make ci` | Everything CI runs on a pull request: `install check test build` |
+| `make pr:guard` | Validate a PR's base, branch name, title and version lockstep (env: `BASE`, `HEAD`, `TITLE`) |
+| `make version:current` | Print the version the three manifests declare |
+| `make version:next` | Print the version after the newest `vX.Y.Z` tag (env: `BUMP`) |
+| `make version:set` | Write `VERSION` into both packages and the crate, refresh both lockfiles |
+| `make version:check` | Fail unless both packages and the crate agree on one version |
+| `make release:notes` | Print a markdown changelog for `RANGE` |
+| `make release:pr` | Open or refresh the draft release PR into `main` (env: `BRANCH`) |
+| `make release:branch` | Cut `release/v<next>` from `main` with the versions bumped |
+| `make release:delete` | Delete a remote branch, tolerating one already gone (env: `BRANCH`) |
+| `make release:tag` | Tag `v<version>` and publish the GitHub Release |
+| `make publish` | Publish all three artifacts — CI only, needs registry tokens |
+| `make publish:bindings` | Publish `@exegia/plugin-supabase-auth` to GitHub Packages |
+| `make publish:ui` | Publish `@exegia/use-auth` to npmjs.org |
+| `make publish:crate` | Publish the crate to crates.io (skips without `CARGO_REGISTRY_TOKEN`) |
+| `make rulesets:diff` | List the rulesets GitHub currently has |
+| `make rulesets:apply` | Push `.github/rulesets/*.json` to GitHub, matched by name |
+
+<Note>
+One version number covers all three artifacts. `version:set` writes `guest-js/package.json`, `react/package.json` and `Cargo.toml`, then regenerates `bun.lock` — a plain `bun install` does not re-resolve a workspace member's pinned version, and a stale pin ships the hooks package depending on an old copy of the bindings.
+</Note>
+
+<Warning>
+`publish:*` is for CI. Each target writes a registry-scoped `$HOME/.npmrc` for the duration of one publish and restores whatever was there before, but it still needs a real token in `NODE_AUTH_TOKEN` and publishes for real. Use `make pack` to inspect what a release would ship.
+</Warning>
 
 ## Local Supabase stack
 

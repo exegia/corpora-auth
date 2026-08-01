@@ -1,0 +1,150 @@
+# Everything that runs *before* a merge.
+#
+#   <type>/<slug>  ->  release/vX.Y.Z    guard + the suite
+#   release/vX.Y.Z ->  main              guard + the suite + packaged tarballs
+#
+# The AI review is review.yml, deliberately a separate file — see the note there.
+#
+# Draft PRs only get the guard. The full suite starts at `ready_for_review`
+# and re-runs on every push after that.
+#
+# Every step is a `make` target, so anything CI does is reproducible locally.
+name: PR
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches:
+      - main
+      - "release/v*"
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Least privilege for every job below: CI only ever reads the checkout.
+permissions:
+  contents: read
+
+env:
+  INSTALL_FLAGS: --frozen-lockfile
+
+jobs:
+  guard:
+    name: guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # bun reads the three manifests for the version-lockstep half of the guard.
+      - uses: ./.github/actions/setup
+
+      # Passed as environment, never interpolated into the shell: a PR title is
+      # attacker-controlled text.
+      - name: Check base, branch name, title and version lockstep
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: make pr-guard
+
+  # `make ci` is install + check + test + build: cargo fmt/clippy, tsc across
+  # the TypeScript packages, the Rust and hook suites, both npm builds, and
+  # `cargo publish --dry-run` for the crate.
+  check:
+    name: check
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup
+      - run: make ci
+
+  # src/ceremony/windows.rs is cfg(windows) — the ubuntu job never compiles it,
+  # and neither does a macOS dev host. Without this job the Windows built-in
+  # ceremony reaches no compiler at all. Compilation + platform-agnostic tests
+  # only: webauthn.dll and the Windows Hello prompt still need the manual smoke
+  # checklist on real hardware.
+  check-windows:
+    name: check-windows
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  # src/ceremony/macos.rs is cfg(target_os = "macos") — same gap as the Windows
+  # job, but lower-risk because it does compile on a macOS dev host. This job
+  # stops that from depending on who happens to be building. The ASAuthorization
+  # prompt needs Associated Domains, a provisioning profile and a human at a
+  # Touch ID Mac, so that stays the manual smoke checklist.
+  # NOTE: macOS runners bill at 10x (Windows 2x, Linux 1x) — clippy and test only.
+  check-macos:
+    name: check-macos
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  # SC-006: the full auth lifecycle against a real local Supabase stack. The
+  # suite is #[ignore]d by default because it needs that stack.
+  e2e:
+    name: e2e
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libdbus-1-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase stack
+        run: |
+          supabase init --force
+          supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector
+      - name: Run lifecycle E2E
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          SUPABASE_E2E_URL="$API_URL" SUPABASE_E2E_KEY="$ANON_KEY" \
+            cargo test --test e2e_lifecycle -- --ignored --nocapture
+
+  # Only on the way into main: the real tarballs, as published. `make pack`
+  # applies the publishConfig rewrite, so this catches the failure mode a plain
+  # build cannot — a tarball whose entry points still say src/.
+  package:
+    name: package
+    if: ${{ !github.event.pull_request.draft && github.base_ref == 'main' }}
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: make install pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corpora-auth-tarballs
+          path: dist-packages/*.tgz
+          if-no-files-found: error

@@ -2,13 +2,13 @@
 # Produce inspectable npm tarballs in dist-packages/ — what a release would ship.
 #
 # `bun pm pack` strips workspace:* protocols but, unlike pnpm, does NOT apply
-# publishConfig field overrides. @exegia/auth-ui relies on those to point
+# publishConfig field overrides. @exegia/use-auth relies on those to point
 # consumers at dist/ instead of src/, so packing it naively yields a tarball
 # whose package.json says "main": "./src/index.ts" — valid-looking and broken.
 #
-# .github/workflows/release.yml works around this with the same rewrite; this
-# script mirrors it so `make pack` shows the real artifact. The tracked
-# package.json is restored on every exit path, including failure.
+# scripts/publish.sh applies the same rewrite (both call apply_publish_config in
+# lib.sh), so `make pack` shows the real artifact. The tracked package.json is
+# restored on every exit path, including failure.
 
 # shellcheck source=./lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
@@ -20,19 +20,8 @@ have bun || die "bun is required (this workspace pins bun in package.json)"
 mkdir -p "$DIST"
 rm -f "$DIST"/*.tgz
 
-# apply_publish_config <dir> — rewrite package.json in place with its
-# publishConfig field overrides (registry excluded, it is not a manifest field).
-apply_publish_config() {
-  bun -e '
-    const fs = require("fs");
-    const path = process.argv[1] + "/package.json";
-    const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
-    const { registry, ...overrides } = pkg.publishConfig ?? {};
-    if (Object.keys(overrides).length === 0) process.exit(0);
-    Object.assign(pkg, overrides);
-    fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
-  ' "$1"
-}
+# apply_publish_config lives in lib.sh — scripts/publish.sh applies the same
+# rewrite for real, and one copy is the point.
 
 pack_package() {
   local dir="$1" name="$2"

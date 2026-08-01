@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { resolveMessage, useAuth } from "@exegia/auth-ui";
+import { resolveMessage, useAuth } from "@exegia/use-auth";
 import type { AuthError, Provider, Session } from "@exegia/plugin-supabase-auth";
 
 const LABELS: Partial<Record<Provider, string>> = {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Toast } from "@base-ui/react/toast";
 import { Tooltip } from "@base-ui/react/tooltip";
-import { usePasskeys, useSession } from "@exegia/auth-ui";
+import { usePasskeys, useSession } from "@exegia/use-auth";
 import { signOut } from "@exegia/plugin-supabase-auth";
 import { Toaster } from "../components/Toaster";
 import { METHODS, type AuthMethod } from "../lib/methods";
