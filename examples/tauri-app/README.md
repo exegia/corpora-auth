@@ -1,7 +1,12 @@
 # Supabase Auth example app
 
 Runnable Tauri v2 app demonstrating `tauri-plugin-supabase-auth` and the
-`@exegia/auth-ui` blocks working together.
+`@exegia/auth-ui` hooks working together.
+
+The UI here is deliberately plain: hand-written forms and one small
+stylesheet (`src/styles.css`), no component library and no Tailwind. The
+package ships hooks only, so what you read in `src/components/` is the auth
+wiring itself rather than someone else's design system.
 
 ## Prerequisites
 
@@ -71,9 +76,10 @@ No cross-window messaging is involved. The plugin emits auth events through
 `AppHandle::emit`, which reaches every window, so the minimized picker updates
 the moment the child signs in.
 
-The shell — picker cards, result panel, error report, toasts — is built with
-[Base UI](https://base-ui.com); the forms themselves are the `@exegia/auth-ui`
-blocks, which is what this example exists to demonstrate.
+The shell keeps three [Base UI](https://base-ui.com) primitives for behaviour
+that is tedious to hand-roll — toasts, tooltips and accordions — and nothing
+else. Every auth form under `src/components/` is plain markup over a hook,
+which is what this example exists to demonstrate.
 
 ## What to try
 
@@ -99,14 +105,13 @@ blocks, which is what this example exists to demonstrate.
 6. **Passkeys** — the passkey card only appears when the device reports a
    usable capability, so it is hidden rather than opening a window that cannot
    work.
-7. **Onboarding** — the "Create an account" method runs `<OnboardingFlow />`:
+7. **Onboarding** — the "Create an account" method drives `useOnboardingFlow`:
    credentials → profile step(s) → the session panel. Progress lives in
    `user_metadata.corpora_onboarding`, so an interrupted flow resumes at the
    step you left off.
 8. **Account linking** — while signed in the picker gains a "Manage this
-   account" card, whose window carries `<LinkedAccounts />`,
-   `<PasskeyManager />`, `<UpdatePasswordForm />` and the "ask Rust"
-   backend-parity check. From there:
+   account" card, whose window drives `useIdentities`, `usePasskeys` and
+   `useAuth().updateUser`, plus the "ask Rust" backend-parity check. From there:
    connect GitHub or Google (system-browser round-trip; configure the
    provider with redirect `http://127.0.0.1:43823/callback` first), watch
    the identity appear in the list, then disconnect it again. With a single

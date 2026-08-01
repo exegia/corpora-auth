@@ -8,8 +8,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "@/*": ["../../ui/src/*"]
+      "@/*": ["../../react/src/*"]
     }
   },
-  "include": ["src", "../../ui/src"]
+  "include": ["src", "../../react/src"]
 }

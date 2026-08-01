@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Avatar } from "@base-ui/react/avatar";
-import { Separator } from "@base-ui/react/separator";
 import { Toast } from "@base-ui/react/toast";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { usePasskeys, useSession } from "@exegia/auth-ui";
@@ -56,33 +54,25 @@ function Picker(): React.ReactElement {
   }
 
   if (status === "loading") {
-    return <main className="p-8 text-sm">Restoring session…</main>;
+    return <main className="page">Restoring session…</main>;
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 p-8">
-      <header className="flex items-start justify-between gap-4">
+    <main className="page">
+      <header className="spread">
         <div>
-          <h1 className="text-xl font-semibold">Supabase Auth example</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Pick a method — it opens in its own window.
-          </p>
+          <h1>Supabase Auth example</h1>
+          <p className="small muted">Pick a method — it opens in its own window.</p>
         </div>
 
         {status === "signedIn" ? (
-          <div className="flex items-center gap-3">
-            <Avatar.Root className="bg-muted flex size-9 items-center justify-center overflow-hidden rounded-full text-xs font-semibold">
-              <Avatar.Fallback>
-                {(user?.email ?? "?").slice(0, 2).toUpperCase()}
-              </Avatar.Fallback>
-            </Avatar.Root>
-            <div className="text-right">
-              <p className="max-w-[14rem] truncate text-sm font-medium">{user?.email}</p>
-              <button
-                className="text-muted-foreground hover:text-foreground text-xs underline"
-                onClick={() => void handleSignOut()}
-                type="button"
-              >
+          <div className="row">
+            <span className="avatar">
+              {(user?.email ?? "?").slice(0, 2).toUpperCase()}
+            </span>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ margin: 0, fontWeight: 500 }}>{user?.email}</p>
+              <button className="link" onClick={() => void handleSignOut()} type="button">
                 Log out
               </button>
             </div>
@@ -90,35 +80,37 @@ function Picker(): React.ReactElement {
         ) : null}
       </header>
 
-      <Separator className="bg-border h-px" />
+      <hr className="rule" />
 
       {status === "signedIn" ? (
-        <p className="bg-card text-muted-foreground rounded-md border p-3 text-xs">
+        <p className="note muted">
           Already signed in. Picking a method still opens its window, so you can
           watch a second sign-in replace this session.
         </p>
       ) : null}
 
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid" style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {methods.map((method) => (
           <li key={method.id}>
             <Tooltip.Root>
               <Tooltip.Trigger
-                className="bg-card text-card-foreground hover:border-ring hover:shadow-sm flex h-full w-full flex-col items-start gap-1 rounded-lg border p-4 text-left transition-all disabled:opacity-50"
+                className="tile"
                 disabled={opening !== null}
                 onClick={() => void open(method)}
                 render={<button type="button" />}
               >
-                <span className="text-sm font-medium">{method.title}</span>
-                <span className="text-muted-foreground text-xs">{method.blurb}</span>
+                <span style={{ fontWeight: 500 }}>{method.title}</span>
+                <span className="small muted">{method.blurb}</span>
                 {opening === method.id ? (
-                  <span className="text-muted-foreground mt-1 text-[11px]">opening…</span>
+                  <span className="small muted">opening…</span>
                 ) : null}
               </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Positioner sideOffset={6}>
-                  <Tooltip.Popup className="bg-popover text-popover-foreground rounded-md border px-2 py-1 text-xs shadow-md">
-                    Opens window <code>auth-{method.id}</code>
+                  <Tooltip.Popup className="tooltip">
+                    <span className="small">
+                      Opens window <code className="mono">auth-{method.id}</code>
+                    </span>
                   </Tooltip.Popup>
                 </Tooltip.Positioner>
               </Tooltip.Portal>
@@ -127,7 +119,7 @@ function Picker(): React.ReactElement {
         ))}
       </ul>
 
-      <p className="text-muted-foreground mt-auto text-xs">
+      <p className="small muted">
         Quitting the app signs you out — every launch starts from a clean slate.
       </p>
     </main>

@@ -1,8 +1,9 @@
 # web-app
 
-Browser-only demo of `@exegia/auth-ui` — the UI kit rendered by a plain Bun dev
-server, with no Tauri shell around it. Useful for iterating on blocks and styles
-without building the native app.
+Browser-only demo of `@exegia/auth-ui` — the hooks wired to a small hand-written
+form, served by a plain Bun dev server with no Tauri shell around it. Useful for
+exercising the package's build output and error path without building the native
+app; outside Tauri there is no plugin behind the bindings, so every call rejects.
 
 ## Running it
 
@@ -26,25 +27,25 @@ make start:web    # serve the bundle with NODE_ENV=production
 ```
 
 Each depends on `build:ui`, because this app resolves `@exegia/auth-ui` through
-`../../ui/dist` rather than through ui's sources — see below.
+`../../react/dist` rather than through the package's sources — see below.
 
 ```bash
 make typecheck:web  # tsc --noEmit
 ```
 
-## Why this app reads the UI kit from `ui/dist`
+## Why this app reads the package from `react/dist`
 
 Inside the workspace `@exegia/auth-ui` is normally consumed as source: its
-`main`/`types` point at `src/index.ts`. Doing that here would pull ui's test
-files into this app's TypeScript program, and force this app to re-declare ui's
+`main`/`types` point at `src/index.ts`. Doing that here would pull the package's test
+files into this app's TypeScript program, and force this app to re-declare the package's
 *private* `@/` alias in its own `paths` — where it collides with the `@/` this
 app uses for its own `src/`.
 
-So `tsconfig.json` maps `@exegia/auth-ui` to `../../ui/dist`, which is what a
+So `tsconfig.json` maps `@exegia/auth-ui` to `../../react/dist`, which is what a
 published consumer resolves, and `skipLibCheck` keeps the declarations cheap.
 Bun honours tsconfig `paths` too, so the bundle and the types come from the same
-place — which is why the targets above build the UI kit first, and why a stale
-`ui/dist` shows up as a stale app.
+place — which is why the targets above build the package first, and why a stale
+`react/dist` shows up as a stale app.
 
 ## Shared dependency versions
 

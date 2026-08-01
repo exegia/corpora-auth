@@ -1,13 +1,12 @@
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   resolve: {
-    // The UI kit ships raw sources that use its internal "@/" alias.
-    alias: { "@": path.resolve(__dirname, "../../ui/src") },
+    // The hooks package ships raw sources that use its internal "@/" alias.
+    alias: { "@": path.resolve(__dirname, "../../react/src") },
   },
   clearScreen: false,
   server: {
