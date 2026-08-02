@@ -20,8 +20,10 @@ Every hook:
 - reports loading, ready and error states explicitly, and never fakes an empty result for a failed load
 - keeps user-facing copy out of your way: `resolveMessage(error, overrides?)` maps an `AuthError` to a string you can override per `AuthErrorKind`
 
+Guards that run outside the React tree — a router loader, a middleware — reach the same actions through [`authActions` and `getSession`](/components/hooks#authactions-and-getsession) rather than a hook.
+
 <Card title="Hooks reference" icon="anchor" href="/components/hooks">
-  `useSession`, `useAuth`, `useOnboarding`, `useOnboardingFlow`, `useIdentities`, `usePasskeys`
+  `useSession`, `useAuth`, `useOnboarding`, `useOnboardingFlow`, `useIdentities`, `usePasskeys`, plus the hook-free `authActions` / `getSession`
 </Card>
 
 ## Permissions

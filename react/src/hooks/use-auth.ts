@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   cancelOAuthFlow,
   isAuthError,
@@ -69,23 +68,31 @@ export interface AuthActions {
 }
 
 /**
- * Stable async auth actions wrapping the plugin bindings. Every action
- * resolves to `{ ok: true, data } | { ok: false, error: AuthError }` and
- * never throws; non-AuthError failures are folded into kind `"unknown"`.
+ * The same actions `useAuth()` returns, callable outside React — router
+ * guards, loaders and middleware run before any component mounts, where a
+ * hook cannot be called. Every action resolves to
+ * `{ ok: true, data } | { ok: false, error: AuthError }` and never throws;
+ * non-AuthError failures are folded into kind `"unknown"`.
+ *
+ * The object holds no React state, so it is a module-scope constant rather
+ * than something a hook builds per component.
+ */
+export const authActions: AuthActions = {
+  signIn: (opts) => run(() => signInWithPassword(opts)),
+  signUp: (opts) => run(() => signUp(opts)),
+  signOut: () => run(() => signOut()),
+  signInWithOtp: (opts) => run(() => signInWithOtp(opts)),
+  verifyOtp: (opts) => run(() => verifyOtp(opts)),
+  signInWithOAuth: (opts) => run(() => signInWithOAuth(opts)),
+  cancelOAuthFlow: () => run(() => cancelOAuthFlow()),
+  resetPassword: (opts) => run(() => resetPasswordForEmail(opts)),
+  updateUser: (opts) => run(() => updateUser(opts)),
+};
+
+/**
+ * Stable async auth actions wrapping the plugin bindings — the same
+ * `authActions` object on every render, in every component.
  */
 export function useAuth(): AuthActions {
-  return useMemo<AuthActions>(
-    () => ({
-      signIn: (opts) => run(() => signInWithPassword(opts)),
-      signUp: (opts) => run(() => signUp(opts)),
-      signOut: () => run(() => signOut()),
-      signInWithOtp: (opts) => run(() => signInWithOtp(opts)),
-      verifyOtp: (opts) => run(() => verifyOtp(opts)),
-      signInWithOAuth: (opts) => run(() => signInWithOAuth(opts)),
-      cancelOAuthFlow: () => run(() => cancelOAuthFlow()),
-      resetPassword: (opts) => run(() => resetPasswordForEmail(opts)),
-      updateUser: (opts) => run(() => updateUser(opts)),
-    }),
-    [],
-  );
+  return authActions;
 }

@@ -12,6 +12,8 @@ import {
   useIdentities,
   usePasskeys,
   resolveMessage,
+  authActions, // the same actions, callable outside React
+  getSession,
 } from "@exegia/use-auth";
 ```
 
@@ -44,6 +46,40 @@ const auth = useAuth();
 const result = await auth.signIn({ email, password });
 if (!result.ok) setError(resolveMessage(result.error));
 ```
+
+### Outside React: `authActions` and `getSession()`
+
+Router guards run before anything mounts — a `clientLoader`, a `beforeLoad`, a
+middleware — so a hook cannot answer "is there a session?". `useAuth()` returns
+a module-scope object with no React state in it, so that object is exported
+directly and `getSession` is re-exported as a value:
+
+```ts
+// app/lib/auth.ts — the whole integration seam
+import { authActions, getSession } from "@exegia/use-auth";
+
+export async function requireSession(request: Request) {
+  const session = await getSession().catch(() => null);
+  if (!session) {
+    const to = encodeURIComponent(new URL(request.url).pathname);
+    throw redirect(`/login?redirectTo=${to}`);
+  }
+  return session.user;
+}
+```
+
+`authActions` is exactly what `useAuth()` returns — same object, same
+never-throwing `AuthResult` contract. **`getSession` is not**: it is the raw
+binding, so a transport failure rejects rather than resolving to `null`. Catch
+it, as above, or a network blip escapes your guard instead of redirecting.
+`useSession()` already folds that failure into `status: "signedOut"` for you.
+
+`onAuthStateChange(cb)` is re-exported alongside it, for bridging plugin events
+into an app-level store; it resolves to an unsubscribe function.
+
+Note that the package entry pulls React into the module graph regardless of
+which export you reach for — these are for guards in a React app, not for a
+React-free runtime.
 
 ### `useOnboarding(steps?)`
 
