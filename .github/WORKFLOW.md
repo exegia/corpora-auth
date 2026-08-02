@@ -10,11 +10,18 @@ feat/add-otp ──PR──> release/v0.7.0 ──PR──> main ──> crates.
 
 One version number ships three artifacts, always in lockstep:
 
-| Path        | Artifact                       | Registry        |
-| ----------- | ------------------------------ | --------------- |
-| `src/`      | `tauri-plugin-supabase-auth`   | crates.io       |
-| `guest-js/` | `@exegia/plugin-supabase-auth` | GitHub Packages |
-| `react/`    | `@exegia/use-auth`             | npmjs.org       |
+| Path        | Artifact                       | Registry                      |
+| ----------- | ------------------------------ | ----------------------------- |
+| `src/`      | `tauri-plugin-supabase-auth`   | crates.io                     |
+| `guest-js/` | `@exegia/plugin-supabase-auth` | npmjs.org **and** GH Packages |
+| `react/`    | `@exegia/use-auth`             | npmjs.org                     |
+
+The bindings go to both registries from a single `make publish-bindings`, and
+`make publish-verify` then asserts the two agree before anything is tagged.
+`@exegia/use-auth` is public on npmjs and pins the bindings exactly, so a
+consumer who maps `@exegia` at npmjs with no token must be able to resolve both
+halves from there — publishing the bindings to GitHub Packages alone left the
+hooks installable but not resolvable (issue #60).
 
 ## Feature branches
 

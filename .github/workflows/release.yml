@@ -4,7 +4,13 @@
 #
 #   tauri-plugin-supabase-auth    -> crates.io        (skipped until CARGO_REGISTRY_TOKEN exists)
 #   @exegia/plugin-supabase-auth  -> GitHub Packages  (GITHUB_TOKEN)
+#                                 -> npmjs.org        (NPM_TOKEN)
 #   @exegia/use-auth              -> npmjs.org        (NPM_TOKEN)
+#
+# The bindings ship to both registries from one step, because @exegia/use-auth
+# is public on npmjs and pins them exactly — a consumer mapping @exegia at
+# npmjs with no token has to resolve both. `publish-verify` then asserts the
+# two registries agree, so parity is CI's job and not a human's.
 #
 # Nothing is re-tested or re-verified here — the exact tree being published
 # already passed `check` and `package` on the release PR. The build step exists
@@ -72,18 +78,29 @@ jobs:
       # ran there, against this exact tree, on the release PR.
       - run: make install build-bindings build-ui
 
-      # Two registries, never mapped at the same time: each step owns
+      # Two registries, never mapped at the same time: each publish owns
       # $HOME/.npmrc for its own duration and hands it back. See
       # scripts/publish.sh for why that file, and why not a project-level one.
+      # This step needs both tokens because it makes both publishes — that is
+      # what keeps the two registries on the same version.
       - name: Publish @exegia/plugin-supabase-auth
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: make publish-bindings
 
       - name: Publish @exegia/use-auth
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: make publish-ui
+
+      # Both registries carry this version, and the hooks install from public
+      # npm with no credentials at all. Reads only — it publishes nothing, and
+      # it gates the tag: a version nobody can install should not get one.
+      - name: Verify registry parity
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make publish-verify
 
       # The crate is not on crates.io yet. Without the token this writes a note
       # to the job summary and succeeds — a permanently-red release step would

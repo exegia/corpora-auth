@@ -48,25 +48,14 @@ tauri::Builder::default()
 
 **2. The frontend packages**
 
-`@exegia/use-auth` (the React hooks) is published to the public npm registry and installs with no extra configuration:
+Both are published to the public npm registry and install with no registry configuration and no token:
 
 ```bash
-bun add @exegia/use-auth
+bun add @exegia/use-auth              # the React hooks — pulls the bindings in with them
+bun add @exegia/plugin-supabase-auth  # or the typed bindings on their own
 ```
 
-The bindings package lives on GitHub Packages, so installing it directly needs the `@exegia` scope pointed there:
-
-```ini
-# .npmrc (project root)
-@exegia:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}   # any token with read:packages
-```
-
-```bash
-bun add @exegia/plugin-supabase-auth
-```
-
-Note the scope mapping routes _every_ `@exegia` package through GitHub Packages, including `@exegia/use-auth` — so add the hooks package (and let the lockfile pin its npmjs URL) before adding the mapping.
+`@exegia/plugin-supabase-auth` is also published to GitHub Packages at the same version, for consumers that already map the `@exegia` scope there. Every release goes to both, and CI refuses to tag one where they disagree.
 
 **3. Your Supabase project**
 

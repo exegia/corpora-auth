@@ -28,20 +28,14 @@ tauri::Builder::default()
 
 <Step title="Install the frontend packages">
 
-`@exegia/use-auth` (the React hooks) lives on the public npm registry; the bindings package lives on GitHub Packages. Install the hooks first, then point the `@exegia` scope at GitHub Packages for the bindings:
+Both packages live on the public npm registry, so this needs no `.npmrc` and no token:
 
 ```bash
-bun add @exegia/use-auth        # optional: the React hooks (public npm registry)
-```
-
-```ini .npmrc
-@exegia:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
-```bash
+bun add @exegia/use-auth        # optional: the React hooks
 bun add @exegia/plugin-supabase-auth
 ```
+
+Adding the hooks pulls the bindings in with them — install the bindings on their own only if you are not using React.
 
 </Step>
 

@@ -51,12 +51,7 @@ npm install @exegia/use-auth
 
 </CodeGroup>
 
-The bindings package is published to GitHub Packages, so installing it directly requires the `@exegia` scope pointed at that registry. Any token with `read:packages` works. Because the scope mapping routes every `@exegia` package through GitHub Packages, add `@exegia/use-auth` first so the lockfile pins its npmjs URL.
-
-```ini .npmrc
-@exegia:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
+The bindings package is published there too, so installing it directly needs no registry mapping and no token either:
 
 <CodeGroup>
 
@@ -69,6 +64,10 @@ npm install @exegia/plugin-supabase-auth
 ```
 
 </CodeGroup>
+
+<Note>
+  `@exegia/plugin-supabase-auth` is also published to GitHub Packages at the same version, for projects that already map the `@exegia` scope there. Both registries get every release, and the release pipeline verifies they agree before it tags. Nothing here requires that mapping — if you do use it, point the whole scope at GitHub Packages and give it a token with `read:packages`.
+</Note>
 
 `@exegia/use-auth` declares `react` and `react-dom` 19 as peer dependencies and depends on the bindings package, so installing the hooks pulls the bindings in with it. It ships no stylesheet and no components — nothing to import besides the hooks themselves.
 
