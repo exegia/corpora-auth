@@ -289,9 +289,9 @@ release-tag:
 	@"$(SCRIPTS)/release.sh" tag
 
 .PHONY: publish
-publish: publish-bindings publish-ui publish-crate ## Publish all three artifacts (CI only — needs registry tokens)
+publish: publish-bindings publish-ui publish-crate publish-verify ## Publish all three artifacts (CI only — needs registry tokens)
 
-publish\:bindings: publish-bindings ## Publish @exegia/plugin-supabase-auth to GitHub Packages
+publish\:bindings: publish-bindings ## Publish @exegia/plugin-supabase-auth to GitHub Packages and npmjs.org
 publish-bindings:
 	@"$(SCRIPTS)/publish.sh" bindings
 
@@ -302,6 +302,10 @@ publish-ui:
 publish\:crate: publish-crate ## Publish tauri-plugin-supabase-auth to crates.io (skips without a token)
 publish-crate:
 	@"$(SCRIPTS)/publish.sh" crate
+
+publish\:verify: publish-verify ## Assert both registries carry this version and it installs with no token
+publish-verify:
+	@"$(SCRIPTS)/publish.sh" verify
 
 rulesets\:diff: rulesets-diff ## List the rulesets GitHub currently has
 rulesets-diff:
@@ -352,6 +356,6 @@ clean-dry:
 .PHONY: pr-guard version-current version-next version-set version-check
 .PHONY: release\:notes release\:pr release\:branch release\:delete release\:tag
 .PHONY: release-notes release-pr release-branch release-delete release-tag
-.PHONY: publish\:bindings publish\:ui publish\:crate rulesets\:diff rulesets\:apply
-.PHONY: publish-bindings publish-ui publish-crate rulesets-diff rulesets-apply
+.PHONY: publish\:bindings publish\:ui publish\:crate publish\:verify rulesets\:diff rulesets\:apply
+.PHONY: publish-bindings publish-ui publish-crate publish-verify rulesets-diff rulesets-apply
 .PHONY: clean\:build clean\:dry clean-build clean-dry
