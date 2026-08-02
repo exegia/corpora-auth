@@ -2,22 +2,8 @@ import { useEffect, useState } from "react";
 import {
   getSession,
   onAuthStateChange,
-  type Session,
-  type User,
 } from "@exegia/plugin-supabase-auth";
-
-export type SessionStatus = "loading" | "signedIn" | "signedOut";
-
-export interface UseSessionResult {
-  session: Session | null;
-  user: User | null;
-  status: SessionStatus;
-}
-
-interface SessionState {
-  session: Session | null;
-  status: SessionStatus;
-}
+import type { SessionState, UseSessionResult } from "@/types/session";
 
 /**
  * Current auth session: one initial `getSession()` fetch, then push updates

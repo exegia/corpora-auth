@@ -5,37 +5,10 @@ import {
   isAuthError,
   linkIdentity,
   onAuthStateChange,
-  unlinkIdentity,
-  type AuthError,
-  type Identity,
-  type Provider,
+  unlinkIdentity
 } from "@exegia/plugin-supabase-auth";
 import { useSession } from "@/hooks/use-session";
-
-export type IdentitiesStatus = "loading" | "ready" | "error";
-
-/** Discriminated action result — link/unlink never throw. */
-export type IdentityActionResult =
-  | { ok: true; identities: Identity[] }
-  | { ok: false; error: AuthError };
-
-export interface UseIdentitiesResult {
-  /** `null` until the first successful load (and while signed out). */
-  identities: Identity[] | null;
-  status: IdentitiesStatus;
-  /** Load error — when set, `identities` is never presented as an empty list. */
-  error: AuthError | null;
-  /** Provider whose link round-trip is currently in the browser. */
-  linkInFlight: Provider | null;
-  /** Re-fetches the identity list. */
-  refresh(): Promise<void>;
-  /** Starts the browser link round-trip for `provider`. */
-  link(provider: Provider): Promise<IdentityActionResult>;
-  /** Cancels an in-flight link round-trip. */
-  cancelLink(): Promise<void>;
-  /** Disconnects the identity with the given row key. */
-  unlink(identityId: string): Promise<IdentityActionResult>;
-}
+import type { IdentitiesStatus, IdentityActionResult, UseIdentitiesResult, Identity, Provider, AuthError  } from "@/types/identities";
 
 function toAuthError(e: unknown): AuthError {
   if (isAuthError(e)) return e;

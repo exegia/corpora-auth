@@ -4,18 +4,7 @@ import {
   getOnboardingStatus,
   type OnboardingStepConfig,
 } from "@/lib/onboarding";
-
-export type UseOnboardingStatus =
-  | "loading"
-  | "signedOut"
-  | "incomplete"
-  | "complete";
-
-export interface UseOnboardingResult {
-  status: UseOnboardingStatus;
-  /** First incomplete step id (present when status is "incomplete"). */
-  nextStep?: string;
-}
+import { UseOnboardingResult } from "@/types/onboarding";
 
 /**
  * Host-app gating hook (FR-008): derives onboarding status from the current

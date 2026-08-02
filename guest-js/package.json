@@ -21,11 +21,11 @@
     "test": "echo \"no tests in guest-js (covered by ui + rust suites)\""
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0"
+    "@tauri-apps/api": "^2.11.1"
   },
   "devDependencies": {
-    "tsup": "^8.0.0",
-    "typescript": "^5.5.0"
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2"
   },
   "license": "MIT OR Apache-2.0",
   "repository": {
