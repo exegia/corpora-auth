@@ -80,13 +80,13 @@ note() {
 # two destinations, so any single value there could only be a lie about one of
 # them.
 
-MANIFEST=""; MANIFEST_BACKUP=""; NPMRC_BACKUP=""; NPMRC_WRITTEN=0; PROBE_DIR=""
+MANIFEST=""; MANIFEST_BACKUP=""; NPMRC_BACKUP=""; NPMRC_WRITTEN=0; VERIFY_TMP=""
 
 restore() {
   if [ -n "$MANIFEST_BACKUP" ]; then
     cp "$MANIFEST_BACKUP" "$MANIFEST"; rm -f "$MANIFEST_BACKUP"; MANIFEST_BACKUP=""
   fi
-  if [ -n "$PROBE_DIR" ]; then rm -rf "$PROBE_DIR"; PROBE_DIR=""; fi
+  if [ -n "$VERIFY_TMP" ]; then rm -rf "$VERIFY_TMP"; VERIFY_TMP=""; fi
   if [ "$NPMRC_WRITTEN" -eq 1 ]; then
     if [ -n "$NPMRC_BACKUP" ]; then
       cp "$NPMRC_BACKUP" "$HOME/.npmrc"; rm -f "$NPMRC_BACKUP"; NPMRC_BACKUP=""
@@ -196,6 +196,7 @@ cmd_crate() {
 # npm_isolated <args…> — npm with the ambient user config ignored. A developer
 # whose ~/.npmrc maps @exegia at GitHub Packages would otherwise make the
 # no-token probe pass (or 401) for reasons that have nothing to do with npmjs.
+# The matching cache isolation is set once in cmd_verify, and matters more.
 npm_isolated() { npm --userconfig /dev/null "$@"; }
 
 # await_version <name@version> <registry> [npm-flags…] — a version published
@@ -226,6 +227,15 @@ cmd_verify() {
 
   heading "Registry parity for v$version"
 
+  # A cache of our own, and it is load-bearing rather than tidiness. npm caches
+  # packuments and serves them for npmjs's max-age (300s) without revalidating
+  # — verified: `npm view … --offline` answers straight after a normal view.
+  # The publish steps ran minutes earlier on this same runner and asked these
+  # exact URLs whether the version existed *before* it did. Reusing that cache
+  # would fail a perfectly good release for the whole retry window.
+  VERIFY_TMP="$(mktemp -d)"                  # removed by restore(), every exit path
+  export npm_config_cache="$VERIFY_TMP/cache"
+
   # GitHub Packages needs auth even to read, so this one borrows the same
   # $HOME/.npmrc dance the publishes use. npmjs is public — read it with the
   # ambient config ignored, which is also what proves no token is involved.
@@ -241,15 +251,16 @@ cmd_verify() {
 
   heading "Installing $ui@$version from public npm, no token"
 
-  PROBE_DIR="$(mktemp -d)"   # removed by restore(), on every exit path
-  printf '@exegia:registry=%s/\n' "$NPM_REGISTRY" > "$PROBE_DIR/.npmrc"
-  printf '{"name":"probe","private":true,"version":"0.0.0"}\n' > "$PROBE_DIR/package.json"
+  local probe="$VERIFY_TMP/probe"
+  mkdir -p "$probe"
+  printf '@exegia:registry=%s/\n' "$NPM_REGISTRY" > "$probe/.npmrc"
+  printf '{"name":"probe","private":true,"version":"0.0.0"}\n' > "$probe/package.json"
 
-  if (cd "$PROBE_DIR" && npm_isolated install --dry-run "$ui@$version" >/dev/null 2>&1); then
+  if (cd "$probe" && npm_isolated install --dry-run "$ui@$version" >/dev/null 2>&1); then
     ok "$ui@$version resolves from npmjs with no credentials"
   else
     fail "$ui@$version does not resolve from npmjs — a dependency of it is unreachable there"
-    (cd "$PROBE_DIR" && npm_isolated install --dry-run "$ui@$version" 2>&1 | tail -20) || true
+    (cd "$probe" && npm_isolated install --dry-run "$ui@$version" 2>&1 | tail -20) || true
     return 1
   fi
 
