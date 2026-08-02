@@ -10,11 +10,18 @@ feat/add-otp ──PR──> release/v0.7.0 ──PR──> main ──> crates.
 
 One version number ships three artifacts, always in lockstep:
 
-| Path        | Artifact                       | Registry        |
-| ----------- | ------------------------------ | --------------- |
-| `src/`      | `tauri-plugin-supabase-auth`   | crates.io       |
-| `guest-js/` | `@exegia/plugin-supabase-auth` | GitHub Packages |
-| `react/`    | `@exegia/use-auth`             | npmjs.org       |
+| Path        | Artifact                       | Registry                      |
+| ----------- | ------------------------------ | ----------------------------- |
+| `src/`      | `tauri-plugin-supabase-auth`   | crates.io                     |
+| `guest-js/` | `@exegia/plugin-supabase-auth` | npmjs.org **and** GH Packages |
+| `react/`    | `@exegia/use-auth`             | npmjs.org                     |
+
+The bindings go to both registries from a single `make publish-bindings`, and
+`make publish-verify` then asserts the two agree before anything is tagged.
+`@exegia/use-auth` is public on npmjs and pins the bindings exactly, so a
+consumer who maps `@exegia` at npmjs with no token must be able to resolve both
+halves from there — publishing the bindings to GitHub Packages alone left the
+hooks installable but not resolvable (issue #60).
 
 ## Feature branches
 
@@ -156,8 +163,12 @@ Two publishing facts worth knowing before the first release:
 - **No npm provenance.** corpora-ui publishes with `npm publish --provenance`;
   this repo publishes with `bun publish`, which has no equivalent flag, because
   bun is what correctly strips the `workspace:*` dependency on the bindings.
-- **`@exegia/use-auth` has never been published to npmjs.org** — the old
-  `@exegia/auth-ui` name went to GitHub Packages only. Confirm the `@exegia`
-  scope exists there and that `NPM_TOKEN` is authorized for it before the first
-  release. Publishing runs *before* tagging on purpose, so a failure leaves no
-  tag pointing at a version nobody can install.
+- **`NPM_TOKEN` has to be allowed to create a *new* package.**
+  `@exegia/use-auth` has shipped to npmjs since v0.7.0, but
+  `@exegia/plugin-supabase-auth` has never existed there — v0.8.0 is its first
+  publish. A granular token scoped to selected packages 403s on a name it has
+  never seen, which fails the bindings step before the hooks are published at
+  all. `npm access list packages` with that token in hand says what it may
+  write; it needs the whole `@exegia` scope, or that name added explicitly.
+  Publishing runs *before* tagging on purpose, so a failure leaves no tag
+  pointing at a version nobody can install.

@@ -9,7 +9,7 @@ One monorepo shipping four artifacts from a single lockstep version:
 | Path                   | Artifact                                                   | Registry                      |
 | ---------------------- | ---------------------------------------------------------- | ----------------------------- |
 | `src/`, `permissions/` | `tauri-plugin-supabase-auth` (Rust crate)                  | crates.io (not yet published) |
-| `guest-js/`            | `@exegia/plugin-supabase-auth` — typed webview bindings    | GitHub Packages               |
+| `guest-js/`            | `@exegia/plugin-supabase-auth` — typed webview bindings    | npmjs.org + GitHub Packages   |
 | `react/`               | `@exegia/use-auth` — React hooks                            | npm registry (npmjs.org)      |
 | `examples/tauri-app/`  | Runnable demo wiring all three together                    | not published                 |
 | `examples/web-app/`    | Browser-only demo of the hooks (Bun dev server, no Tauri)  | not published                 |
@@ -142,6 +142,7 @@ Three things about it that are specific to this repo:
 
 - **One version, three manifests.** `guest-js/package.json`, `react/package.json` and `Cargo.toml` must agree — `make version:set` writes all three plus both lockfiles, and `pr-guard` refuses a PR into `main` where they disagree with each other or with the `release/vX.Y.Z` branch name. A partial bump publishes the crate and the npm packages under different numbers and nothing downstream can tell.
 - **`version:set` regenerates `bun.lock` rather than re-installing over it.** `bun.lock` pins each workspace member's own version and `bun publish` resolves `workspace:*` against that pin, not the live `package.json` — a plain `bun install` does not re-resolve it. That is how v0.5.0 shipped `@exegia/use-auth` depending on `@exegia/plugin-supabase-auth@0.2.2`.
+- **The bindings ship to two registries, from one command.** `@exegia/use-auth` is public on npmjs and pins `@exegia/plugin-supabase-auth` exactly, so publishing the bindings to GitHub Packages alone made the hooks installable but not *resolvable* by anyone who didn't also map the scope at GitHub with a `read:packages` token (issue #60). `make publish-bindings` does both registries in one invocation — the version cannot drift between them — and `make publish-verify` reproduces the failing install (a throwaway project, `@exegia` at npmjs, no token) and gates the tag on it. What routes a scoped publish is the `@exegia:registry=` line in the `.npmrc` the script writes — measured on bun 1.3.14, it beats both `--registry` and `publishConfig.registry`, so `guest-js/package.json` declares no registry at all now that it has two.
 - **crates.io is wired but not enabled.** `make publish:crate` skips with a job-summary note until `CARGO_REGISTRY_TOKEN` exists; the two npm packages ship regardless. `make build:plugin` (`cargo publish --dry-run`) is the verification half and runs in `check` on every PR.
 
 `make pack` and `make build:*` only verify a release would work — they never publish. `make publish:*` and `make release:tag` are idempotent: an already-published version or an existing tag is skipped, so re-running a partly-failed release is safe.

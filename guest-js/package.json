@@ -1,6 +1,6 @@
 {
   "name": "@exegia/plugin-supabase-auth",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "TypeScript bindings for tauri-plugin-supabase-auth",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -28,9 +28,6 @@
     "typescript": "^5.5.0"
   },
   "license": "MIT OR Apache-2.0",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/exegia/corpora-auth.git",

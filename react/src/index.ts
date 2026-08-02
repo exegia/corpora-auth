@@ -6,11 +6,25 @@ export * from "./hooks/use-onboarding-flow";
 export * from "./hooks/use-identities";
 export * from "./hooks/use-passkeys";
 
-// Convenience re-export from the bindings package
+// The read side of the imperative surface, for guards that run outside React
+// (router loaders, middleware). Unlike `authActions`, these are the bindings
+// themselves: `getSession` *rejects* on failure rather than resolving to an
+// AuthResult — catch it, or a transport blip escapes your guard.
+export {
+  getSession,
+  onAuthStateChange,
+} from "@exegia/plugin-supabase-auth";
+
+// Convenience re-exports from the bindings package
 export type {
+  AuthChangePayload,
+  AuthError,
+  AuthErrorKind,
   Identity,
   Passkey,
   PasskeyCapability,
+  Session,
+  User,
 } from "@exegia/plugin-supabase-auth";
 
 // Lib

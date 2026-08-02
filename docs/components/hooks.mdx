@@ -61,7 +61,37 @@ Non-`AuthError` failures are folded into `kind: "unknown"`, so `result.error` is
 | `resetPassword({ email, redirectTo? })` | `AuthResult<void>` |
 | `updateUser(opts)` | `AuthResult<User>` |
 
-The returned object is memoized, so it is safe in a dependency array.
+The returned object is a module-scope constant — the same reference in every component, on every render — so it is safe in a dependency array.
+
+## authActions and getSession
+
+Router guards run before anything mounts: a React Router `clientLoader`, a TanStack Router `beforeLoad`, a Next.js middleware. A hook cannot be called there, so the same actions `useAuth()` returns are also exported directly, alongside the read side.
+
+```ts
+// app/lib/auth.ts — the whole integration seam
+import { authActions, getSession } from "@exegia/use-auth";
+
+export async function requireSession(request: Request) {
+  const session = await getSession().catch(() => null);
+  if (!session) {
+    const to = encodeURIComponent(new URL(request.url).pathname);
+    throw redirect(`/login?redirectTo=${to}`);
+  }
+  return session.user;
+}
+```
+
+| Export | Contract |
+| --- | --- |
+| `authActions` | Identical to `useAuth()` — every action resolves to `AuthResult`, never throws |
+| `getSession()` | `Promise<Session \| null>`, and **rejects** on a transport failure |
+| `onAuthStateChange(cb)` | `Promise<() => void>` — the unsubscribe function; for bridging events into your own store |
+
+<Warning>
+  `getSession` is the raw binding, not an `AuthResult` action. A network failure rejects rather than resolving to `null`, so catch it — otherwise a blip escapes your guard instead of redirecting to sign-in. `useSession()` already folds that case into `status: "signedOut"`.
+</Warning>
+
+The package entry pulls React into the module graph whichever export you reach for. These exist for guards in a React app, not for a React-free runtime.
 
 ## useIdentities
 
