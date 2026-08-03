@@ -52,9 +52,49 @@ skip_nonce_check = true
 `skip_nonce_check = true` is required for loopback sign-in. The nonce cannot be verified over a local redirect.
 </Warning>
 
+## Apple sign-in
+
+Apple does not fit the shape above, and the differences are the kind that cost an afternoon.
+
+<Warning>
+**Apple sign-in cannot be tested against a local stack.** Apple rejects a Return URL that is `http://` or points at `localhost` / `127.0.0.1`, so `http://127.0.0.1:54321/auth/v1/callback` — the callback GitHub and Google use — cannot be registered on the Apple side at all. You need a hosted project, or an HTTPS tunnel terminating in front of GoTrue.
+</Warning>
+
+From [developer.apple.com](https://developer.apple.com/account/resources/identifiers/list/serviceId), create a **Services ID** — not an App ID. Its identifier is what GoTrue sends as `client_id`; the bundle ID of a native app is a different thing and will fail with `invalid_client`.
+
+Set its **Return URL** to GoTrue:
+
+```
+https://<project>.supabase.co/auth/v1/callback
+```
+
+The client secret is not a string. Apple wants an **ES256-signed JWT** built from a `.p8` signing key, with `iss` set to your Team ID, `sub` to the Services ID, and `aud` to `https://appleid.apple.com`.
+
+```bash
+export SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID=com.example.service
+export SUPABASE_AUTH_EXTERNAL_APPLE_SECRET=eyJhbGciOiJFUzI1NiIs...
+```
+
+```toml supabase/config.toml
+[auth.external.apple]
+enabled = true
+```
+
+<Warning>
+**The secret expires.** Apple refuses a client secret JWT dated more than six months out, so sign-in works for months and then starts failing with no code change and no deploy to blame. Rotate it on a calendar reminder, and keep the `.p8` — you need it to mint each replacement.
+</Warning>
+
+Two smaller differences worth knowing.
+
+Apple sends the user's name **only on the very first authorization** for a given Apple ID, and never in the identity token — so there is nothing for GoTrue to populate `user_metadata` from on any later sign-in. Deleting the user server-side does not reset this: the authorization still exists on Apple's side, so they come back nameless. Only the user can restore it, by revoking the app under **Settings → Apple Account → Sign in with Apple** and authorizing again. If you need a display name, capture it on first sign-in or ask for it during onboarding.
+
+Users may also sign in with **Hide My Email**, which mints a per-app `…@privaterelay.appleid.com` address that forwards to their real inbox. It is deliverable, but it is not their real address and the user can switch forwarding off per app at any time. Treat it as an identifier, not as a way to match an existing account by email.
+
 ## Redirect URLs
 
-Both providers depend on `additional_redirect_urls`. The plugin binds the first free port from `oauth.callbackPorts` and asks GoTrue to redirect to `http://127.0.0.1:<port>/callback`. The list is matched exactly, so every candidate port must be present.
+Every provider depends on `additional_redirect_urls`. The plugin binds the first free port from `oauth.callbackPorts` and asks GoTrue to redirect to `http://127.0.0.1:<port>/callback`. The list is matched exactly, so every candidate port must be present.
+
+This is the hop *after* the provider, so the loopback address is fine here even for Apple — GoTrue redirects to it, Apple never sees it.
 
 ```toml supabase/config.toml
 [auth]
