@@ -16,6 +16,7 @@ export type MethodId =
   | "passkey"
   | "google"
   | "github"
+  | "apple"
   | "account";
 
 export interface AuthMethod {
@@ -87,6 +88,16 @@ export const METHODS: AuthMethod[] = [
     width: 460,
     height: 480,
     provider: "github",
+  },
+  {
+    id: "apple",
+    title: "Apple",
+    blurb:
+      "Same PKCE flow again — but Apple rejects loopback callbacks, so this one needs a hosted project.",
+    windowTitle: "Sign in with Apple",
+    width: 460,
+    height: 480,
+    provider: "apple",
   },
   {
     id: "account",
