@@ -52,12 +52,25 @@ export function verifyOtp(opts: {
   return invoke(`${PLUGIN}verify_otp`, { ...rest, otpType: type });
 }
 
-/** Opens the system browser and resolves when the OAuth round-trip completes. */
+/**
+ * Opens the system browser and resolves when the OAuth round-trip completes.
+ *
+ * `redirectTo` is **web-only** and ignored here, the mirror image of
+ * {@link cancelOAuthFlow} being a web no-op: on Tauri the plugin drives the
+ * system browser back to its own loopback listener
+ * (`http://127.0.0.1:<port>/callback`), so there is no landing page to choose.
+ * It is accepted so the two surfaces stay signature-identical, and it never
+ * enters the IPC payload.
+ */
 export function signInWithOAuth(opts: {
   provider: Provider;
   scopes?: string[];
+  redirectTo?: string;
 }): Promise<Session> {
-  return invoke(`${PLUGIN}start_oauth_flow`, { ...opts });
+  return invoke(`${PLUGIN}start_oauth_flow`, {
+    provider: opts.provider,
+    scopes: opts.scopes,
+  });
 }
 
 export function cancelOAuthFlow(): Promise<void> {
@@ -99,12 +112,19 @@ export function getIdentities(): Promise<Identity[]> {
 /**
  * Links a provider identity to the CURRENT account via the system browser.
  * Resolves with the refreshed identity list when the round-trip completes.
+ *
+ * `redirectTo` is **web-only** and ignored here, exactly as in
+ * {@link signInWithOAuth} — the loopback listener owns the redirect.
  */
 export function linkIdentity(opts: {
   provider: Provider;
   scopes?: string[];
+  redirectTo?: string;
 }): Promise<Identity[]> {
-  return invoke(`${PLUGIN}link_identity`, { ...opts });
+  return invoke(`${PLUGIN}link_identity`, {
+    provider: opts.provider,
+    scopes: opts.scopes,
+  });
 }
 
 /** Disconnects an identity by its identityId (row key). */

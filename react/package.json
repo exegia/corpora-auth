@@ -1,6 +1,6 @@
 {
   "name": "@exegia/use-auth",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "React hooks for tauri-plugin-supabase-auth",
   "type": "module",
   "main": "./src/index.ts",
@@ -10,7 +10,7 @@
     "./hooks/*": "./src/hooks/*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && ./scripts/check-dist-esm.sh",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
