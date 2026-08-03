@@ -118,9 +118,15 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libdbus-1-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # Pinned, not `latest`: resolving `latest` is an unauthenticated GitHub API
+      # call, so the job dies with "rate limit exceeded" before it installs
+      # anything — a setup failure that reads like a test failure. The version
+      # tracks docker/Dockerfile's SUPABASE_VERSION, which exists to reproduce
+      # this toolchain locally; bump the two together or the image stops matching
+      # what CI actually runs.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
       - name: Start local Supabase stack
         run: |
           supabase init --force
