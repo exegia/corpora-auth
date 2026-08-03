@@ -56,7 +56,7 @@ Non-`AuthError` failures are folded into `kind: "unknown"`, so `result.error` is
 | `signOut()` | `AuthResult<void>` |
 | `signInWithOtp({ email?, phone?, redirectTo? })` | `AuthResult<void>` |
 | `verifyOtp({ email?, phone?, token, type })` | `AuthResult<Session>` |
-| `signInWithOAuth({ provider, scopes? })` | `AuthResult<Session>` |
+| `signInWithOAuth({ provider, scopes?, redirectTo? })` | `AuthResult<Session>` |
 | `cancelOAuthFlow()` | `AuthResult<void>` |
 | `resetPassword({ email, redirectTo? })` | `AuthResult<void>` |
 | `updateUser(opts)` | `AuthResult<User>` |

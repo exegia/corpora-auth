@@ -33,8 +33,8 @@ Sessions returned to the webview are sanitized: they carry the access token, exp
   Redeems a code. `type` is `"email" | "sms" | "recovery"`.
 </ParamField>
 
-<ParamField path="signInWithOAuth({ provider, scopes? })" type="Promise<Session>">
-  Opens the system browser and resolves when the loopback round-trip completes. See [OAuth](/plugin/oauth).
+<ParamField path="signInWithOAuth({ provider, scopes?, redirectTo? })" type="Promise<Session>">
+  Opens the system browser and resolves when the loopback round-trip completes. See [OAuth](/plugin/oauth). `redirectTo` is web-only: it picks the page GoTrue returns the browser to (omitted, the project's Site URL; provided, it must be in the project's Redirect URLs allow-list). On Tauri it is accepted and ignored — the loopback listener owns the redirect.
 </ParamField>
 
 <ParamField path="cancelOAuthFlow()" type="Promise<void>">
@@ -73,8 +73,8 @@ These require opt-in [permissions](/plugin/permissions).
   The sign-in identities attached to the account. Needs `allow-get-identities`.
 </ParamField>
 
-<ParamField path="linkIdentity({ provider, scopes? })" type="Promise<Identity[]>">
-  Attaches a provider identity to the current account via the system browser. Needs `allow-link-identity` and `enable_manual_linking` on the project.
+<ParamField path="linkIdentity({ provider, scopes?, redirectTo? })" type="Promise<Identity[]>">
+  Attaches a provider identity to the current account via the system browser. Needs `allow-link-identity` and `enable_manual_linking` on the project. `redirectTo` behaves as in `signInWithOAuth`: web-only, allow-listed, ignored on Tauri.
 </ParamField>
 
 <ParamField path="unlinkIdentity({ identityId })" type="Promise<Identity[]>">
