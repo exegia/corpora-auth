@@ -125,7 +125,10 @@ pub(crate) fn classify_auth_text(text: &str) -> ErrorKind {
         // NOTE: GoTrue answers HTTP 404 here — classification must key on the
         // error code, never the status (research R4).
         ErrorKind::Configuration
-    } else if t.contains("insufficient_aal") {
+    } else if t.contains("insufficient_aal")
+        || t.contains("no_authorization")
+        || t.contains("not_admin")
+    {
         ErrorKind::PermissionDenied
     } else if t.contains("refresh_token_not_found")
         || t.contains("refresh token not found")
@@ -180,6 +183,24 @@ impl From<reqwest::Error> for Error {
             Error::network(e.to_string())
         } else {
             Error::unknown(e.to_string())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn authorization_codes_classify_as_permission_denied() {
+        // Kept in lockstep with guest-js/src/web.ts's error mapping: the web
+        // bindings classify these GoTrue codes as permissionDenied too.
+        for body in [
+            r#"{"code":401,"error_code":"no_authorization","msg":"This endpoint requires a Bearer token"}"#,
+            r#"{"code":403,"error_code":"not_admin","msg":"User not allowed"}"#,
+            r#"{"code":403,"error_code":"insufficient_aal","msg":"AAL2 required"}"#,
+        ] {
+            assert_eq!(classify_auth_text(body), ErrorKind::PermissionDenied);
         }
     }
 }

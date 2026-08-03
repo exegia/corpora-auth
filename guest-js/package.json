@@ -1,7 +1,7 @@
 {
   "name": "@exegia/plugin-supabase-auth",
-  "version": "0.8.0",
-  "description": "TypeScript bindings for tauri-plugin-supabase-auth",
+  "version": "0.9.0",
+  "description": "TypeScript bindings for tauri-plugin-supabase-auth, for both the tauri webview and the browser",
   "type": "module",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs",
@@ -11,21 +11,32 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./tauri": {
+      "types": "./dist/tauri.d.ts",
+      "import": "./dist/tauri.js",
+      "require": "./dist/tauri.cjs"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "import": "./dist/web.js",
+      "require": "./dist/web.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup index.ts --format esm,cjs --dts --clean",
+    "build": "tsup src/index.ts src/tauri.ts src/web.ts --format esm,cjs --splitting --dts --clean",
     "test": "echo \"no tests in guest-js (covered by ui + rust suites)\""
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0"
+    "@supabase/auth-js": "^2.111.0",
+    "@tauri-apps/api": "^2.11.1"
   },
   "devDependencies": {
-    "tsup": "^8.0.0",
-    "typescript": "^5.5.0"
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   },
   "license": "MIT OR Apache-2.0",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@exegia/use-auth",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "React hooks for tauri-plugin-supabase-auth",
   "type": "module",
   "main": "./src/index.ts",
@@ -26,6 +26,7 @@
     "@testing-library/jest-dom": "catalog:testing",
     "@testing-library/react": "catalog:testing",
     "@types/react": "catalog:",
+    "@tauri-apps/api": "^2.11.1",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:build",
     "jsdom": "catalog:testing",

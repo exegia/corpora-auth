@@ -14,6 +14,10 @@ const result = await Bun.build({
   minify: true,
   target: "browser",
   sourcemap: "linked",
+  // `bunfig.toml` inlines BUN_PUBLIC_* for the dev server only; the production
+  // bundle needs the same prefix declared here or `configureWeb` boots with
+  // undefined Supabase settings and the app throws on first paint.
+  env: "BUN_PUBLIC_*",
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },

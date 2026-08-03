@@ -1,22 +1,25 @@
 import "./index.css";
 
 import { useState } from "react";
-import { resolveMessage, useAuth } from "@exegia/use-auth";
+import { resolveMessage, useAuth, useSession } from "@exegia/use-auth";
 
 /**
  * Browser-only demo of `@exegia/use-auth`.
  *
  * The package ships hooks, not components — so this is what consuming it looks
- * like: `useAuth` for actions, `resolveMessage` for user-facing copy, and
- * markup that belongs entirely to the app.
+ * like: `useSession` for state, `useAuth` for actions, `resolveMessage` for
+ * user-facing copy, and markup that belongs entirely to the app.
  *
- * Deliberately no `useSession` here: it subscribes to the plugin's auth-state
- * events on mount, which needs a Tauri window. The action hooks degrade
- * gracefully in a browser — a call simply comes back `{ ok: false }` — which
- * is the path this demo exercises.
+ * Nothing here is web-specific. The bindings dispatch on the runtime, so this
+ * is the same code the Tauri example runs; the one piece of browser setup —
+ * `configureWeb(...)` — happens in `frontend.tsx` before this mounts.
+ * `usePasskeys` is left out to keep the demo small, not because it is
+ * unavailable: it works in a browser too, given a secure context and passkeys
+ * enabled on the project.
  */
 export function App() {
   const auth = useAuth();
+  const { user, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,16 +32,50 @@ export function App() {
     setBusy(true);
     const result = await auth.signIn({ email, password });
     setBusy(false);
+    // No navigation on success: `useSession` picks the new session up from the
+    // SIGNED_IN event, so the signed-in view renders on its own.
     if (!result.ok) setError(resolveMessage(result.error));
+  }
+
+  async function signOut() {
+    setBusy(true);
+    const result = await auth.signOut();
+    setBusy(false);
+    if (!result.ok) setError(resolveMessage(result.error));
+  }
+
+  if (status === "loading") {
+    return (
+      <main className="demo">
+        <p className="muted">Restoring session…</p>
+      </main>
+    );
+  }
+
+  if (status === "signedIn") {
+    return (
+      <main className="demo">
+        <h1>@exegia/use-auth</h1>
+        <p className="muted">
+          Signed in as {user?.email ?? user?.id}. The session lives in
+          localStorage, so it survives a reload — <code>useSession</code>
+          {" "}restores it and then tracks it through auth-state events.
+        </p>
+        {error ? <p className="alert">{error}</p> : null}
+        <button disabled={busy} onClick={signOut} type="button">
+          {busy ? "Signing out…" : "Sign out"}
+        </button>
+      </main>
+    );
   }
 
   return (
     <main className="demo">
       <h1>@exegia/use-auth</h1>
       <p className="muted">
-        Hooks over the plugin bindings. Outside a Tauri window there is no
-        plugin behind them, so signing in here comes back as a structured
-        error — which is the path this demo exercises.
+        Hooks over the plugin bindings. Outside a Tauri window they dispatch to
+        supabase-js and talk to your Supabase project directly — same API, same
+        hooks, no plugin.
       </p>
 
       <form onSubmit={submit}>

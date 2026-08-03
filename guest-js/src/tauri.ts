@@ -1,8 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+
+import { AUTH_CHANGED_EVENT, PLUGIN } from "@/constant";
 import type {
   AuthChangePayload,
-  AuthError,
   Identity,
   Passkey,
   PasskeyCapability,
@@ -16,43 +17,10 @@ import type {
   UpdateUserOptions,
   User,
   OtpType,
-} from "./types";
-
-export * from "./types";
-
-const PLUGIN = "plugin:supabase-auth|";
-const AUTH_CHANGED_EVENT = "supabase-auth://auth-state-changed";
-
-const ERROR_KINDS = new Set([
-  "invalidCredentials",
-  "emailAlreadyRegistered",
-  "emailNotConfirmed",
-  "otpExpired",
-  "network",
-  "configuration",
-  "sessionExpired",
-  "oauthFlowInterrupted",
-  "rateLimited",
-  "permissionDenied",
-  "identityAlreadyLinked",
-  "lastSignInMethod",
-  "passkeyChallengeExpired",
-  "passkeyVerificationFailed",
-  "passkeyUnsupported",
-  "unknown",
-]);
+} from "@/types";
 
 /** Type guard for structured plugin errors carried by rejected promises. */
-export function isAuthError(e: unknown): e is AuthError {
-  return (
-    typeof e === "object" &&
-    e !== null &&
-    "kind" in e &&
-    typeof (e as AuthError).kind === "string" &&
-    ERROR_KINDS.has((e as AuthError).kind) &&
-    "message" in e
-  );
-}
+export { isAuthError } from "@/constant";
 
 export function signUp(opts: SignUpOptions): Promise<SignUpResult> {
   return invoke(`${PLUGIN}sign_up`, { ...opts });
@@ -227,3 +195,4 @@ export function onAuthStateChange(
 ): Promise<UnlistenFn> {
   return listen<AuthChangePayload>(AUTH_CHANGED_EVENT, (e) => cb(e.payload));
 }
+
