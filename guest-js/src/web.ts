@@ -87,8 +87,11 @@ export function configureWeb(
     client = config.client;
     return;
   }
+  // Trimmed without a regex: /\/+$/ backtracks quadratically (CodeQL js/polynomial-redos).
+  let base = config.url;
+  while (base.endsWith("/")) base = base.slice(0, -1);
   client = new GoTrueClient({
-    url: `${config.url.replace(/\/+$/, "")}/auth/v1`,
+    url: `${base}/auth/v1`,
     headers: { apikey: config.anonKey },
     storageKey: config.storageKey,
     persistSession: true,
