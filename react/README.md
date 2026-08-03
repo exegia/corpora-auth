@@ -17,14 +17,96 @@ import {
 } from "@exegia/use-auth";
 ```
 
-Requires the plugin to be installed and `supabase-auth:default` granted in
-your capabilities, plus the opt-in permissions listed below for account
-mutations (see the [root README](../README.md#permissions)).
+The hooks are runtime-agnostic — the same import works in a Tauri window and
+in a plain browser tab — but each runtime needs one piece of setup. See
+[Web vs Tauri](#web-vs-tauri).
 
 > Looking for a pre-built auth UI? The rendered blocks that used to live here
 > now ship from [`@exegia/corpora-ui`](https://github.com/exegia/corpora-ui)
 > as presentational components you drive with callbacks — pair them with
 > these hooks.
+
+## Web vs Tauri
+
+Nothing in this package imports Tauri. It talks only to the root of
+`@exegia/plugin-supabase-auth`, whose exports dispatch at the first call:
+`__TAURI_INTERNALS__` present ⇒ the plugin commands, otherwise
+supabase-js in the browser. So `import { useSession } from "@exegia/use-auth"`
+is the same line in both apps, and neither runtime's implementation is pulled
+into the other's bundle.
+
+**Tauri apps** register the plugin and grant `supabase-auth:default` in their
+capabilities, plus the opt-in permissions listed under
+[Permissions](#permissions) for account mutations (see the
+[root README](../README.md#permissions)). Config lives in `tauri.conf.json`
+under `plugins.supabase-auth`; nothing extra to call at startup.
+
+**Web apps** must call `configureWeb` **once, before anything renders** —
+import it from the bindings package directly, not from here (re-exporting it
+would drag the web implementation into every Tauri bundle):
+
+```ts
+// main.tsx — before createRoot(...).render(...)
+import { configureWeb } from "@exegia/plugin-supabase-auth/web";
+
+configureWeb({
+  url: import.meta.env.VITE_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+  // storageKey: "myapp-auth",   // optional; namespaces the localStorage entry
+});
+```
+
+If the app already has a supabase-js data client, hand over its auth client
+instead so both share one session, one storage key and one refresh timer —
+two `GoTrueClient`s on the same storage key fight over the refresh:
+
+```ts
+import { createClient } from "@supabase/supabase-js";
+import { configureWeb } from "@exegia/plugin-supabase-auth/web";
+
+export const supabase = createClient(url, anonKey, {
+  // Required if you want passkeys — see below. The `{ url, anonKey }` form
+  // above sets this for you; supplying your own client does not.
+  auth: { experimental: { passkey: true } },
+});
+configureWeb({ client: supabase.auth });
+```
+
+Skip the call and every action resolves `{ ok: false, error: { kind:
+"configuration" } }` — the hooks surface it as an ordinary structured failure
+rather than throwing, so an unconfigured app looks like a broken backend. It
+is worth an explicit startup check.
+
+Three behavioural differences to design around:
+
+- **`IDENTITIES_CHANGED` and `PASSKEYS_CHANGED` never fire on the web.** Those
+  are the plugin's own events, raised after its own mutations; supabase-js
+  emits only GoTrue's four (`SIGNED_IN`, `SIGNED_OUT`, `TOKEN_REFRESHED`,
+  `PASSWORD_RECOVERY`). So in a browser `useIdentities()` and `usePasskeys()`
+  load once and never auto-refresh — call their `refresh()` after a link,
+  unlink, register, rename or delete resolves.
+- **`signInWithOAuth` and `link` are redirect flows on the web.** The Tauri
+  bindings drive a system browser and always resolve in-process; the browser
+  normally **navigates away**, so those promises may never settle in the
+  current document — the session arrives on the callback page via
+  `useSession`. Don't build a spinner that unconditionally awaits them, and
+  don't treat "never resolved" as a failure. They resolve in-page only when
+  the round-trip stays in this document (a popup, or a callback route the same
+  SPA instance renders), and reject only if the redirect could not be started.
+- **Passkeys work on both runtimes, but the web has more ways to be
+  unavailable.** supabase-js runs the WebAuthn ceremony in the page, so
+  passkeys are real here — given a secure context and a browser with
+  `PublicKeyCredential`, which is exactly and only what
+  `getPasskeyCapability()` checks. It cannot see whether the *client* supports
+  passkeys: an app that configured with `{ client }` and did not pass
+  `auth: { experimental: { passkey: true } }` to `createClient` gets
+  `{ usable: true }` from the probe and a **`configuration`** rejection at call
+  time (not `passkeyUnsupported`, which means the authenticator itself can't do
+  what the ceremony needs). Project-level enablement is invisible to the probe
+  the same way. Gate passkey UI on `capability.usable` — **not** on
+  `usePasskeys().status`, which describes the list fetch — and handle a
+  `configuration` error from `register` / `signIn` even when capability said
+  usable.
 
 ## Hooks
 

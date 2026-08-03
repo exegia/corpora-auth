@@ -40,10 +40,17 @@ export function useSession(): UseSessionResult {
         session: payload.session,
         status: payload.session ? "signedIn" : "signedOut",
       });
-    }).then((fn) => {
-      if (!active) fn();
-      else unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        if (!active) fn();
+        else unlisten = fn;
+      })
+      // Subscribing can itself fail — on the web path an unconfigured
+      // binding rejects with kind "configuration" rather than resolving to
+      // an unlisten function. Swallow it: without the catch it escapes as an
+      // unhandled rejection, and the `getSession()` above has already
+      // settled `status` for us.
+      .catch(() => {});
 
     return () => {
       active = false;

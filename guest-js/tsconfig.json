@@ -6,7 +6,10 @@
     "strict": true,
     "skipLibCheck": true,
     "declaration": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["index.ts", "types.ts"]
+  "include": ["src/*.ts"]
 }

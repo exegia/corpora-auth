@@ -76,10 +76,15 @@ export function useIdentities(): UseIdentitiesResult {
       if (active && payload.event === "IDENTITIES_CHANGED") {
         void refresh();
       }
-    }).then((fn) => {
-      if (!active) fn();
-      else unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        if (!active) fn();
+        else unlisten = fn;
+      })
+      // A failed subscription (unconfigured web bindings reject with kind
+      // "configuration") must not escape as an unhandled rejection; the list
+      // simply never auto-refreshes. See use-session.ts.
+      .catch(() => {});
 
     return () => {
       active = false;

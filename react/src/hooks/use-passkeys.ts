@@ -95,10 +95,14 @@ export function usePasskeys(): UsePasskeysResult {
       if (active && payload.event === "PASSKEYS_CHANGED") {
         void refresh();
       }
-    }).then((fn) => {
-      if (!active) fn();
-      else unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        if (!active) fn();
+        else unlisten = fn;
+      })
+      // A failed subscription must not escape as an unhandled rejection.
+      // See use-session.ts.
+      .catch(() => {});
 
     return () => {
       active = false;

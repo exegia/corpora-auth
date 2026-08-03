@@ -223,10 +223,14 @@ export function useOnboardingFlow(
           submitting: false,
         });
       }
-    }).then((fn) => {
-      if (!active) fn();
-      else unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        if (!active) fn();
+        else unlisten = fn;
+      })
+      // A failed subscription must not escape as an unhandled rejection.
+      // See use-session.ts.
+      .catch(() => {});
 
     return () => {
       active = false;
