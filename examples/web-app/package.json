@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@exegia/plugin-supabase-auth": "workspace:*",
     "@exegia/use-auth": "workspace:*",
     "bun-plugin-tailwind": "^0.1.2",
     "react": "catalog:",

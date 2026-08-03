@@ -1,85 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getSession,
-  onAuthStateChange,
-  type AuthError,
-  type User,
+  onAuthStateChange
 } from "@exegia/plugin-supabase-auth";
 import { useAuth } from "@/hooks/use-auth";
 import {
   DEFAULT_STEPS,
+  NonEmptySteps,
   ONBOARDING_METADATA_KEY,
+  OnboardingStatusRecord,
   assertValidSteps,
   describeUpdateUserError,
   encodeStatus,
   getOnboardingStatus,
-  type NonEmptySteps,
-  type OnboardingStatusRecord,
-  type OnboardingStepConfig,
 } from "@/lib/onboarding";
-
-/** In-memory flow states (see data-model.md, R5). */
-export type OnboardingFlowState =
-  | "loading"
-  | "credentials"
-  | "confirming"
-  | "profile"
-  | "completing"
-  | "done";
-
-export interface OnboardingCompletion {
-  user: User;
-  /** Field values collected during this mount (empty on already-complete resume). */
-  profile: Record<string, unknown>;
-}
-
-export interface UseOnboardingFlowConfig {
-  steps?: OnboardingStepConfig[];
-  /** Fires exactly once, only after the final status write succeeds (FR-006). */
-  onComplete?: (result: OnboardingCompletion) => void;
-}
-
-export interface OnboardingProgressItem {
-  id: string;
-  title: string;
-  status: "done" | "current" | "todo";
-}
-
-export interface UseOnboardingFlowResult {
-  state: OnboardingFlowState;
-  /** Position within the declared profile steps. */
-  stepIndex: number;
-  /** Resolved step configuration (declared or DEFAULT_STEPS). */
-  steps: OnboardingStepConfig[];
-  progress: OnboardingProgressItem[];
-  /** Locally held entries for back-navigation restore (FR-002). */
-  values: Record<string, unknown>;
-  error: AuthError | null;
-  /** Email being confirmed / prefilled after editEmail. */
-  email: string | null;
-  /** True after a successful resendCode (cleared by other actions). */
-  resent: boolean;
-  /** True while any network action is in flight. */
-  submitting: boolean;
-  submitCredentials(input: { email: string; password: string }): Promise<void>;
-  submitCode(code: string): Promise<void>;
-  resendCode(): Promise<void>;
-  editEmail(): void;
-  submitStep(values: Record<string, unknown>): Promise<void>;
-  goBack(): void;
-  signInInstead(input?: { email: string; password: string }): Promise<void>;
-}
-
-interface InternalState {
-  state: OnboardingFlowState;
-  stepIndex: number;
-  values: Record<string, unknown>;
-  error: AuthError | null;
-  email: string | null;
-  confirmationRequired: boolean;
-  resent: boolean;
-  submitting: boolean;
-}
+import type { InternalState, OnboardingProgressItem, UseOnboardingFlowConfig, UseOnboardingFlowResult, AuthError,
+ User } from "@/types/onboarding";
 
 const INITIAL_STATE: InternalState = {
   state: "loading",
@@ -287,10 +223,14 @@ export function useOnboardingFlow(
           submitting: false,
         });
       }
-    }).then((fn) => {
-      if (!active) fn();
-      else unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        if (!active) fn();
+        else unlisten = fn;
+      })
+      // A failed subscription must not escape as an unhandled rejection.
+      // See use-session.ts.
+      .catch(() => {});
 
     return () => {
       active = false;

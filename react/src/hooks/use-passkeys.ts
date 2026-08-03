@@ -8,40 +8,10 @@ import {
   renamePasskey,
   signInWithPasskey,
   onAuthStateChange,
-  type AuthError,
-  type Passkey,
-  type PasskeyCapability,
-  type PasskeyRegistrationResult,
-  type PasskeySignInResult,
+  AuthError
 } from "@exegia/plugin-supabase-auth";
 import { useSession } from "@/hooks/use-session";
-
-export type PasskeysStatus = "loading" | "ready" | "error";
-
-/** Discriminated action result — passkey actions never throw. */
-export type PasskeyActionResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: AuthError };
-
-export interface UsePasskeysResult {
-  /** `null` until the device probe completes. Never network-dependent. */
-  capability: PasskeyCapability | null;
-  /** `null` until the first successful load (and while signed out). */
-  passkeys: Passkey[] | null;
-  status: PasskeysStatus;
-  error: AuthError | null;
-  /** Re-fetches the passkey list. */
-  refresh(): Promise<void>;
-  /** Discoverable sign-in; `data.status === "cancelled"` is not an error. */
-  signIn(): Promise<PasskeyActionResult<PasskeySignInResult>>;
-  /** Registers a passkey on the current account (OS prompt). */
-  register(): Promise<PasskeyActionResult<PasskeyRegistrationResult>>;
-  /** Renames a passkey (1–120 characters). */
-  rename(passkeyId: string, friendlyName: string): Promise<PasskeyActionResult<Passkey>>;
-  /** Deletes a passkey. Confirm with the user first — there is no server-side
-   * protection against removing the last one. */
-  remove(passkeyId: string): Promise<PasskeyActionResult<void>>;
-}
+import type { PasskeyActionResult, PasskeysStatus, UsePasskeysResult, Passkey, PasskeyCapability, PasskeySignInResult, PasskeyRegistrationResult } from "@/types/passkeys";
 
 function toAuthError(e: unknown): AuthError {
   if (isAuthError(e)) return e;
@@ -125,10 +95,14 @@ export function usePasskeys(): UsePasskeysResult {
       if (active && payload.event === "PASSKEYS_CHANGED") {
         void refresh();
       }
-    }).then((fn) => {
-      if (!active) fn();
-      else unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        if (!active) fn();
+        else unlisten = fn;
+      })
+      // A failed subscription must not escape as an unhandled rejection.
+      // See use-session.ts.
+      .catch(() => {});
 
     return () => {
       active = false;

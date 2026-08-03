@@ -27,6 +27,11 @@ export type {
   User,
 } from "@exegia/plugin-supabase-auth";
 
+// Hook prop/result types (`./types`). The bindings re-exports above stay
+// authoritative for the names both surfaces declare (AuthError, User, …):
+// explicit named exports take precedence over star exports.
+export * from "./types";
+
 // Lib
 export * from "./lib/error-messages";
 export * from "./lib/schemas";
