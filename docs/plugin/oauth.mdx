@@ -52,6 +52,10 @@ A missing redirect URL fails after the consent screen, inside GoTrue. It does no
 
 The provider's own callback URL is different: it points at GoTrue, not at the plugin. See [Provider setup](/plugin/provider-setup).
 
+## In the browser
+
+The [web bindings](/plugin/javascript-api) hand the whole redirect to GoTrue instead of a loopback listener, so the landing page is yours to choose: pass `redirectTo` to `signInWithOAuth` / `linkIdentity` (e.g. `/auth/callback?next=…` in a multi-environment SPA where localhost dev and the production domain need different callbacks). Omitted, GoTrue returns the browser to the project's **Site URL**; provided, the URL must appear in the same Redirect URLs allow-list above or GoTrue falls back to the Site URL. On Tauri the option is accepted for signature parity and ignored — the loopback redirect is the plugin's.
+
 ## Cancelling
 
 While a round-trip is in flight, the plugin holds the loopback listener until the browser returns or `oauth.flowTimeoutSecs` elapses. If the user backs out in your UI, cancel explicitly so the listener closes immediately:

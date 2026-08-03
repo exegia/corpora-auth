@@ -33,6 +33,9 @@ type AuthResult<T = void> =
     signInWithOAuth(opts: {
       provider: Provider;
       scopes?: string[];
+      /** Web-only post-callback landing page; must be in the project's
+       * Redirect URLs allow-list. Ignored on Tauri (loopback redirect). */
+      redirectTo?: string;
     }): Promise<AuthResult<Session>>;
     cancelOAuthFlow(): Promise<AuthResult<void>>;
     resetPassword(opts: {

@@ -93,6 +93,12 @@ Three behavioural differences to design around:
   don't treat "never resolved" as a failure. They resolve in-page only when
   the round-trip stays in this document (a popup, or a callback route the same
   SPA instance renders), and reject only if the redirect could not be started.
+  Pass `redirectTo` to choose the page the browser lands on after the provider
+  round-trip (e.g. `/auth/callback?next=…`); omitted, GoTrue returns to the
+  project's **Site URL**, and provided, it must be listed in the project's
+  **Redirect URLs** allow-list or GoTrue falls back to the Site URL anyway.
+  On Tauri the option is accepted and ignored — the plugin's loopback listener
+  owns the redirect there.
 - **Passkeys work on both runtimes, but the web has more ways to be
   unavailable.** supabase-js runs the WebAuthn ceremony in the page, so
   passkeys are real here — given a secure context and a browser with

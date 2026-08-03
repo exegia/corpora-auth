@@ -514,17 +514,24 @@ export function verifyOtp(opts: {
  * in-page when the round-trip stays in this document (popup, or a callback
  * route rendered by the same SPA instance), in which case it yields the new
  * session. It rejects if the redirect itself could not be started.
+ *
+ * `redirectTo` picks the page GoTrue returns the browser to after the provider
+ * round-trip. Omitted, that is the project's **Site URL**; provided, it must
+ * appear in the project's **Redirect URLs** allow-list or GoTrue falls back to
+ * the Site URL. On Tauri the option is ignored — the plugin owns the redirect
+ * via its loopback listener.
  */
 export function signInWithOAuth(opts: {
   provider: Provider;
   scopes?: string[];
+  redirectTo?: string;
 }): Promise<Session> {
   return run(async (c) => {
     const waiter = waitForEvent(c, (e) => e === "SIGNED_IN");
     try {
       const res = await c.signInWithOAuth({
         provider: opts.provider as SupabaseProvider,
-        options: { scopes: opts.scopes?.join(" ") },
+        options: { scopes: opts.scopes?.join(" "), redirectTo: opts.redirectTo },
       });
       if (res.error) throw res.error;
     } catch (e) {
@@ -626,10 +633,15 @@ export function getIdentities(): Promise<Identity[]> {
  * never settles — refresh the list with {@link getIdentities} on the callback
  * page. When the round-trip stays in this document it resolves with the
  * refreshed identity list.
+ *
+ * `redirectTo` behaves as in {@link signInWithOAuth}: the post-callback landing
+ * page, defaulting to the project's Site URL, and only honoured when listed in
+ * the project's Redirect URLs allow-list. Ignored on Tauri.
  */
 export function linkIdentity(opts: {
   provider: Provider;
   scopes?: string[];
+  redirectTo?: string;
 }): Promise<Identity[]> {
   return run(async (c) => {
     // The callback surfaces as USER_UPDATED when linking happens in-page, and
@@ -638,7 +650,7 @@ export function linkIdentity(opts: {
     try {
       const res = await c.linkIdentity({
         provider: opts.provider as SupabaseProvider,
-        options: { scopes: opts.scopes?.join(" ") },
+        options: { scopes: opts.scopes?.join(" "), redirectTo: opts.redirectTo },
       });
       if (res.error) throw res.error;
     } catch (e) {
