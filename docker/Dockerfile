@@ -22,7 +22,7 @@ LABEL org.opencontainers.image.source="https://github.com/exegia/corpora-auth" \
 ARG RUST_VERSION=stable
 ARG BUN_VERSION=1.3.2
 ARG NODE_VERSION=20.20.2
-ARG SUPABASE_VERSION=2.109.1
+ARG SUPABASE_VERSION=2.111.0
 
 ENV DEBIAN_FRONTEND=noninteractive \
     CARGO_HOME=/usr/local/cargo \

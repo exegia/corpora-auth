@@ -1,6 +1,6 @@
 {
   "name": "@exegia/plugin-supabase-auth",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "TypeScript bindings for tauri-plugin-supabase-auth, for both the tauri webview and the browser",
   "type": "module",
   "types": "./dist/index.d.ts",

@@ -330,22 +330,7 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
-[auth.external.apple]
-enabled = false
-client_id = ""
-# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
-secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
-# Overrides the default auth callback URL derived from auth.external_url.
-redirect_uri = ""
-# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
-# or any other third-party OIDC providers.
-url = ""
-# If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
-skip_nonce_check = false
-# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
-email_optional = false
-
-# The two providers the example app's picker offers. Both are off until you
+# The three providers the example app's picker offers. All are off until you
 # supply credentials — flip `enabled` and export the secret, then restart the
 # stack (`supabase stop && supabase start`; config.toml is read only at boot).
 #
@@ -365,6 +350,20 @@ client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 # Required for local Google sign-in — the nonce cannot be verified over loopback.
 skip_nonce_check = true
+
+# Apple is the odd one out and will NOT work against this local stack. Apple
+# rejects a Return URL that is http:// or points at localhost/127.0.0.1, so the
+# GoTrue callback above cannot be registered on the Apple side at all — you need
+# a hosted project (https://<project>.supabase.co/auth/v1/callback) or an HTTPS
+# tunnel in front of GoTrue. See /plugin/provider-setup for the full walkthrough.
+#
+# client_id is the *Services ID*, not the bundle ID, and the secret is an
+# ES256-signed JWT you generate from a .p8 key — Apple refuses one that expires
+# more than six months out, so it has to be rotated on a schedule.
+[auth.external.apple]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
