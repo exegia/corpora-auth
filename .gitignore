@@ -32,4 +32,8 @@ dist-packages/
 # Agent skill mirrors — canonical copies live in docs/skills/
 .agents/
 .grok/
-AuthKey_TY3HP78T4H.p8
+
+# Apple sign-in signing keys. The .p8 mints the GoTrue client secret, and Apple
+# caps that JWT at six months — so these rotate, and each new key arrives under
+# a different AuthKey_<id>.p8 name. Match the extension, not one filename.
+*.p8
