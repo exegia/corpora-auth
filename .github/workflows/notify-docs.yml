@@ -5,6 +5,10 @@
 # Its mirror runs nightly on its own; this dispatch is what makes a change here
 # show up on the docs site within a minute instead of by the next morning.
 #
+# Auth is a short-lived token minted from the org automation App, scoped to
+# corpora-docs alone — the same pattern as pr-merged.yml. No long-lived PAT
+# exists for this, and there is nothing to rotate.
+#
 # See https://exegia.mintlify.site/contributing/multi-repo-docs
 name: Notify docs site
 
@@ -15,31 +19,40 @@ on:
       - "docs/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   dispatch:
     name: Trigger docs mirror
     runs-on: ubuntu-latest
     steps:
-      - name: Check the dispatch token is configured
-        id: token
-        env:
-          GH_TOKEN: ${{ secrets.CORPORA_DOCS_DISPATCH_TOKEN }}
-        run: |
-          if [ -z "${GH_TOKEN}" ]; then
-            echo "::warning::CORPORA_DOCS_DISPATCH_TOKEN is not set — skipping. \
-            The docs site will pick this change up on its nightly mirror instead."
-            echo "present=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          fi
+      # continue-on-error: minting fails if the App is not installed on
+      # corpora-docs. That must not turn every docs push red — the nightly
+      # mirror still picks the change up, so a warning is the right severity.
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: corpora-docs
 
       - name: Dispatch to corpora-docs
-        if: steps.token.outputs.present == 'true'
+        if: steps.app-token.outputs.token != ''
         env:
-          GH_TOKEN: ${{ secrets.CORPORA_DOCS_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           gh api repos/exegia/corpora-docs/dispatches \
             -f event_type=docs-updated \
             -F client_payload[repo]="${{ github.repository }}" \
             -F client_payload[sha]="${{ github.sha }}"
           echo "Dispatched — corpora-docs will re-mirror and redeploy."
+
+      - name: Warn when the token could not be minted
+        if: steps.app-token.outputs.token == ''
+        run: |
+          echo "::warning::Could not mint a token for exegia/corpora-docs. Check that the \
+          automation App is installed there with contents:write. The docs site will pick \
+          this change up on its nightly mirror instead."
